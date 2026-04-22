@@ -551,7 +551,7 @@ a {
    ============================================================ */
 .app-card {
   position: relative;
-  width: clamp(180px, 220px, 100%);
+  width: clamp(240px, 280px, 100%);
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-md);
@@ -647,18 +647,30 @@ a {
 
 /* App icon */
 .app-icon {
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
   border-radius: var(--r-sm);
   border: 1px solid;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 1.05rem;
+  font-size: 1.15rem;
   font-weight: 700;
   flex-shrink: 0;
   letter-spacing: -0.02em;
   transition: transform var(--t-med);
+  position: relative;
+  overflow: hidden;
+}
+
+/* Image overlay — covers the letter when loaded */
+.app-icon-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: calc(var(--r-sm) - 2px);
 }
 
 .app-card:hover .app-icon {
@@ -675,7 +687,7 @@ a {
 }
 
 .app-name {
-  font-size: 0.855rem;
+  font-size: 0.875rem;
   font-weight: 600;
   color: var(--text);
   white-space: nowrap;
@@ -690,6 +702,19 @@ a {
   overflow: hidden;
   text-overflow: ellipsis;
   font-family: 'SFMono-Regular', 'Consolas', monospace;
+}
+
+.app-description {
+  font-size: 0.7rem;
+  color: var(--text-3);
+  line-height: 1.45;
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  line-clamp: 2;
+  white-space: normal;
+  margin-top: 1px;
 }
 
 /* External link icon on hover */
@@ -899,33 +924,49 @@ a {
 }
 
 .form-group input,
-.form-group select {
+.form-group select,
+.form-group textarea {
   width: 100%;
-  height: 40px;
   padding: 0 13px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--r-sm);
   color: var(--text);
   font-size: 0.875rem;
+  font-family: inherit;
   transition: border-color var(--t-fast), background var(--t-fast), box-shadow var(--t-fast);
   outline: none;
+  resize: none;
+}
+
+.form-group input,
+.form-group select {
+  height: 40px;
+}
+
+.form-group textarea {
+  padding-top: 10px;
+  padding-bottom: 10px;
+  line-height: 1.5;
 }
 
 .form-group input:hover,
-.form-group select:hover {
+.form-group select:hover,
+.form-group textarea:hover {
   border-color: var(--border-hover);
   background: var(--surface-3);
 }
 
 .form-group input:focus,
-.form-group select:focus {
+.form-group select:focus,
+.form-group textarea:focus {
   border-color: var(--accent);
   box-shadow: 0 0 0 3px var(--accent-light);
   background: var(--surface-3);
 }
 
-.form-group input::placeholder {
+.form-group input::placeholder,
+.form-group textarea::placeholder {
   color: var(--text-3);
 }
 

@@ -44,6 +44,8 @@ def init_db():
                 port        TEXT,
                 category_id TEXT NOT NULL DEFAULT 'uncategorized',
                 sort_order  INTEGER NOT NULL DEFAULT 0,
+                description TEXT,
+                image_url   TEXT,
                 created_at  TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (category_id) REFERENCES categories(id) ON UPDATE CASCADE
             );
@@ -58,6 +60,16 @@ def init_db():
             conn.commit()
         except sqlite3.OperationalError:
             pass  # column already exists
+        try:
+            conn.execute('ALTER TABLE apps ADD COLUMN description TEXT')
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
+        try:
+            conn.execute('ALTER TABLE apps ADD COLUMN image_url TEXT')
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass
     log.info('Database ready at %s', DB_PATH)
 
 
@@ -119,6 +131,22 @@ def api_reorder_categories():
     return jsonify({'ok': True})
 
 
+@app.route('/api/categories/<cat_id>', methods=['PUT'])
+def api_update_category(cat_id):
+    data = request.get_json(silent=True) or {}
+    name = (data.get('name') or '').strip()
+    if not name:
+        return jsonify({'error': 'Name is required'}), 400
+    with get_db() as conn:
+        row = conn.execute('SELECT * FROM categories WHERE id = ?', (cat_id,)).fetchone()
+        if not row:
+            return jsonify({'error': 'Not found'}), 404
+        conn.execute('UPDATE categories SET name=? WHERE id=?', (name, cat_id))
+        conn.commit()
+        row = conn.execute('SELECT * FROM categories WHERE id = ?', (cat_id,)).fetchone()
+    return jsonify(row_to_dict(row))
+
+
 @app.route('/api/categories/<cat_id>', methods=['DELETE'])
 def api_delete_category(cat_id):
     with get_db() as conn:
@@ -154,8 +182,10 @@ def api_create_app():
     if not name or not url:
         return jsonify({'error': 'Name and URL are required'}), 400
     app_id = new_id('app')
-    port   = (str(data.get('port') or '')).strip() or None
-    cat_id = (data.get('category_id') or 'uncategorized').strip()
+    port        = (str(data.get('port') or '')).strip() or None
+    cat_id      = (data.get('category_id') or 'uncategorized').strip()
+    description = (data.get('description') or '').strip() or None
+    image_url   = (data.get('image_url')   or '').strip() or None
     with get_db() as conn:
         if not conn.execute('SELECT 1 FROM categories WHERE id = ?', (cat_id,)).fetchone():
             cat_id = 'uncategorized'
@@ -164,8 +194,8 @@ def api_create_app():
         ).fetchone()[0]
         sort_order = max_order + 1
         conn.execute(
-            'INSERT INTO apps (id, name, url, port, category_id, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
-            (app_id, name, url, port, cat_id, sort_order)
+            'INSERT INTO apps (id, name, url, port, category_id, sort_order, description, image_url) VALUES (?, ?, ?, ?, ?, ?, ?, ?)',
+            (app_id, name, url, port, cat_id, sort_order, description, image_url)
         )
         conn.commit()
         row = conn.execute('SELECT * FROM apps WHERE id = ?', (app_id,)).fetchone()
@@ -179,15 +209,19 @@ def api_update_app(app_id):
         existing = conn.execute('SELECT * FROM apps WHERE id = ?', (app_id,)).fetchone()
         if not existing:
             return jsonify({'error': 'Not found'}), 404
-        name   = (data.get('name')        or existing['name']).strip()
-        url    = (data.get('url')         or existing['url']).strip()
-        port   = (str(data.get('port') or '')).strip() or None
-        cat_id = (data.get('category_id') or existing['category_id']).strip()
+        name        = (data.get('name')        or existing['name']).strip()
+        url         = (data.get('url')         or existing['url']).strip()
+        port        = (str(data.get('port') or '')).strip() or None
+        cat_id      = (data.get('category_id') or existing['category_id']).strip()
+        description = (data.get('description') if 'description' in data else existing['description'])
+        description = (description or '').strip() or None
+        image_url   = (data.get('image_url')   if 'image_url'   in data else existing['image_url'])
+        image_url   = (image_url   or '').strip() or None
         if not conn.execute('SELECT 1 FROM categories WHERE id = ?', (cat_id,)).fetchone():
             cat_id = 'uncategorized'
         conn.execute(
-            'UPDATE apps SET name=?, url=?, port=?, category_id=? WHERE id=?',
-            (name, url, port, cat_id, app_id)
+            'UPDATE apps SET name=?, url=?, port=?, category_id=?, description=?, image_url=? WHERE id=?',
+            (name, url, port, cat_id, description, image_url, app_id)
         )
         conn.commit()
         row = conn.execute('SELECT * FROM apps WHERE id = ?', (app_id,)).fetchone()

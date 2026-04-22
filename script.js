@@ -176,11 +176,13 @@ function showConfirm(message, title, onConfirm) {
 // CRUD OPERATIONS (async — all mutations go through the API)
 // ================================================================
 
-async function addApp({ name, url, port, categoryId }) {
+async function addApp({ name, url, port, categoryId, description, imageUrl }) {
   try {
     const app = await api.post('/api/apps', {
       name, url, port: port || null,
-      category_id: categoryId || 'uncategorized'
+      category_id: categoryId || 'uncategorized',
+      description: description || null,
+      image_url:   imageUrl   || null
     });
     state.apps.push(app);
     renderAll();
@@ -188,11 +190,13 @@ async function addApp({ name, url, port, categoryId }) {
   } catch (err) { showToast(err.message, 'error'); }
 }
 
-async function updateApp(id, { name, url, port, categoryId }) {
+async function updateApp(id, { name, url, port, categoryId, description, imageUrl }) {
   try {
     const updated = await api.put(`/api/apps/${id}`, {
       name, url, port: port || null,
-      category_id: categoryId || 'uncategorized'
+      category_id: categoryId || 'uncategorized',
+      description: description || null,
+      image_url:   imageUrl   || null
     });
     const idx = state.apps.findIndex(a => a.id === id);
     if (idx !== -1) state.apps[idx] = updated;
@@ -235,6 +239,24 @@ async function deleteCategory(id) {
       ? `Catégorie supprimée — ${n} app${n > 1 ? 's' : ''} déplacée${n > 1 ? 's' : ''} dans "Non classé"`
       : `Catégorie "${cat.name}" supprimée`, 'info');
   } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function renameCategory(id, name) {
+  const cat = state.categories.find(c => c.id === id);
+  if (!cat || cat.is_protected) return;
+  const prev = cat.name;
+  cat.name = name; // optimistic
+  renderAll();
+  try {
+    const updated = await api.put(`/api/categories/${id}`, { name });
+    const idx = state.categories.findIndex(c => c.id === id);
+    if (idx !== -1) state.categories[idx] = updated;
+    showToast(`Catégorie renommée en « ${name} »`);
+  } catch (err) {
+    cat.name = prev; // rollback
+    renderAll();
+    showToast(err.message, 'error');
+  }
 }
 
 async function relocateApp(appId, targetCatId, beforeAppId) {
@@ -376,6 +398,18 @@ function buildCategoryHTML(cat) {
       </svg>
     </button>` : '';
 
+  const renameBtn = !cat.is_protected ? `
+    <button class="btn-icon"
+            data-action="rename-category"
+            data-cat-id="${escapeHtml(cat.id)}"
+            title="Renommer la catégorie"
+            aria-label="Renommer ${escapeHtml(cat.name)}">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+        <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+      </svg>
+    </button>` : '';
+
   const gripHandle = !cat.is_protected ? `
     <span class="cat-drag-handle" aria-hidden="true" title="Réorganiser la catégorie">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
@@ -421,6 +455,7 @@ function buildCategoryHTML(cat) {
               <line x1="5" y1="12" x2="19" y2="12"/>
             </svg>
           </button>
+          ${renameBtn}
           ${deleteBtn}
         </div>
       </div>
@@ -434,9 +469,22 @@ function buildCategoryHTML(cat) {
 }
 
 function buildAppCardHTML(app) {
-  const color = getAppColor(app.name);
-  const href  = buildUrl(app.url, app.port);
-  const label = displayUrl(app.url, app.port);
+  const color   = getAppColor(app.name);
+  const href    = buildUrl(app.url, app.port);
+  const label   = displayUrl(app.url, app.port);
+  const initial = getInitial(app.name);
+
+  const iconHTML = `
+    <div class="app-icon"
+         style="background:${color}1a;color:${color};border-color:${color}33;"
+         aria-hidden="true">
+      ${initial}
+      ${app.image_url ? `<img src="${escapeHtml(app.image_url)}" alt="" class="app-icon-img" onerror="this.style.display='none'">` : ''}
+    </div>`;
+
+  const descHTML = app.description
+    ? `<span class="app-description">${escapeHtml(app.description)}</span>`
+    : '';
 
   return `
     <article class="app-card"
@@ -460,14 +508,11 @@ function buildAppCardHTML(app) {
            target="_blank"
            rel="noopener noreferrer"
            tabindex="-1">
-          <div class="app-icon"
-               style="background:${color}1a;color:${color};border-color:${color}33;"
-               aria-hidden="true">
-            ${getInitial(app.name)}
-          </div>
+          ${iconHTML}
           <div class="app-info">
             <span class="app-name">${escapeHtml(app.name)}</span>
             <span class="app-url">${escapeHtml(label)}</span>
+            ${descHTML}
           </div>
           <span class="app-card-open-icon" aria-hidden="true">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -794,25 +839,29 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Forms ────────────────────────────────────────────────────
   document.getElementById('formAddApp').addEventListener('submit', e => {
     e.preventDefault();
-    const name  = document.getElementById('appName').value.trim();
-    const url   = document.getElementById('appUrl').value.trim();
-    const port  = document.getElementById('appPort').value.trim();
-    const catId = document.getElementById('appCategory').value;
+    const name        = document.getElementById('appName').value.trim();
+    const url         = document.getElementById('appUrl').value.trim();
+    const port        = document.getElementById('appPort').value.trim();
+    const catId       = document.getElementById('appCategory').value;
+    const description = document.getElementById('appDescription').value.trim();
+    const imageUrl    = document.getElementById('appImageUrl').value.trim();
     if (!name || !url) return;
     closeModal('modalAddApp');
-    addApp({ name, url, port: port || null, categoryId: catId });
+    addApp({ name, url, port: port || null, categoryId: catId, description, imageUrl });
   });
 
   document.getElementById('formEditApp').addEventListener('submit', e => {
     e.preventDefault();
-    const id    = document.getElementById('editAppId').value;
-    const name  = document.getElementById('editAppName').value.trim();
-    const url   = document.getElementById('editAppUrl').value.trim();
-    const port  = document.getElementById('editAppPort').value.trim();
-    const catId = document.getElementById('editAppCategory').value;
+    const id          = document.getElementById('editAppId').value;
+    const name        = document.getElementById('editAppName').value.trim();
+    const url         = document.getElementById('editAppUrl').value.trim();
+    const port        = document.getElementById('editAppPort').value.trim();
+    const catId       = document.getElementById('editAppCategory').value;
+    const description = document.getElementById('editAppDescription').value.trim();
+    const imageUrl    = document.getElementById('editAppImageUrl').value.trim();
     if (!id || !name || !url) return;
     closeModal('modalEditApp');
-    updateApp(id, { name, url, port: port || null, categoryId: catId });
+    updateApp(id, { name, url, port: port || null, categoryId: catId, description, imageUrl });
   });
 
   document.getElementById('formAddCategory').addEventListener('submit', e => {
@@ -823,6 +872,15 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!name) return;
     closeModal('modalAddCategory');
     addCategory({ name, color });
+  });
+
+  document.getElementById('formRenameCategory').addEventListener('submit', e => {
+    e.preventDefault();
+    const id   = document.getElementById('renameCatId').value;
+    const name = document.getElementById('renameCatName').value.trim();
+    if (!id || !name) return;
+    closeModal('modalRenameCategory');
+    renameCategory(id, name);
   });
 
   // ── Color picker ─────────────────────────────────────────────
@@ -886,10 +944,12 @@ document.addEventListener('DOMContentLoaded', async () => {
       const appId = el.dataset.appId;
       const app   = state.apps.find(a => a.id === appId);
       if (!app) return;
-      document.getElementById('editAppId').value   = app.id;
-      document.getElementById('editAppName').value = app.name;
-      document.getElementById('editAppUrl').value  = app.url;
-      document.getElementById('editAppPort').value = app.port || '';
+      document.getElementById('editAppId').value          = app.id;
+      document.getElementById('editAppName').value        = app.name;
+      document.getElementById('editAppUrl').value         = app.url;
+      document.getElementById('editAppPort').value        = app.port || '';
+      document.getElementById('editAppDescription').value = app.description || '';
+      document.getElementById('editAppImageUrl').value    = app.image_url   || '';
       populateCategorySelect('editAppCategory', app.category_id);
       openModal('modalEditApp');
     }
@@ -903,6 +963,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         ? `Supprimer "${cat.name}" ? Les ${n} application${n > 1 ? 's' : ''} seront déplacées dans "Non classé".`
         : `Supprimer la catégorie "${cat.name}" ?`;
       showConfirm(msg, 'Supprimer la catégorie', () => deleteCategory(catId));
+    }
+
+    if (action === 'rename-category') {
+      const catId = el.dataset.catId;
+      const cat   = state.categories.find(c => c.id === catId);
+      if (!cat) return;
+      document.getElementById('renameCatId').value   = cat.id;
+      document.getElementById('renameCatName').value = cat.name;
+      openModal('modalRenameCategory');
     }
 
     if (action === 'add-app-to-cat') {

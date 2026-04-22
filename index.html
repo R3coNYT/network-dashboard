@@ -89,6 +89,14 @@
             </select>
           </div>
         </div>
+        <div class="form-group">
+          <label for="appDescription">Description <span class="optional">(optionnel)</span></label>
+          <textarea id="appDescription" rows="2" placeholder="Brève description de l'application…" autocomplete="off"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="appImageUrl">Image (URL) <span class="optional">(optionnel)</span></label>
+          <input type="text" id="appImageUrl" placeholder="https://…/logo.png" autocomplete="off">
+        </div>
         <div class="form-footer">
           <button type="button" class="btn btn-ghost" data-close="modalAddApp">Annuler</button>
           <button type="submit" class="btn btn-primary">Ajouter</button>
@@ -159,9 +167,38 @@
             </select>
           </div>
         </div>
+        <div class="form-group">
+          <label for="editAppDescription">Description <span class="optional">(optionnel)</span></label>
+          <textarea id="editAppDescription" rows="2" autocomplete="off"></textarea>
+        </div>
+        <div class="form-group">
+          <label for="editAppImageUrl">Image (URL) <span class="optional">(optionnel)</span></label>
+          <input type="text" id="editAppImageUrl" autocomplete="off">
+        </div>
         <div class="form-footer">
           <button type="button" class="btn btn-ghost" data-close="modalEditApp">Annuler</button>
           <button type="submit" class="btn btn-primary">Sauvegarder</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Rename Category ===== -->
+  <div class="modal-overlay" id="modalRenameCategory" role="dialog" aria-modal="true" aria-labelledby="titleRenameCategory">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title" id="titleRenameCategory">Renommer la catégorie</h2>
+        <button class="modal-close" data-close="modalRenameCategory" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formRenameCategory" class="modal-form" novalidate>
+        <input type="hidden" id="renameCatId">
+        <div class="form-group">
+          <label for="renameCatName">Nouveau nom <span class="required">*</span></label>
+          <input type="text" id="renameCatName" placeholder="ex : Infrastructure, Monitoring…" autocomplete="off" required>
+        </div>
+        <div class="form-footer">
+          <button type="button" class="btn btn-ghost" data-close="modalRenameCategory">Annuler</button>
+          <button type="submit" class="btn btn-primary">Renommer</button>
         </div>
       </form>
     </div>
