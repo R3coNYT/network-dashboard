@@ -2,15 +2,19 @@
 """NetDashboard — Flask API backend with SQLite persistence."""
 
 import os
+import re
 import uuid
 import sqlite3
 import logging
 from flask import Flask, request, jsonify, send_from_directory
 
 # ── Configuration ────────────────────────────────────────────────
-BASE_DIR   = os.path.dirname(os.path.abspath(__file__))
-DB_PATH    = os.path.join(BASE_DIR, 'netdashboard.db')
-STATIC_DIR = BASE_DIR
+BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
+DB_PATH      = os.path.join(BASE_DIR, 'netdashboard.db')
+STATIC_DIR   = BASE_DIR
+UPLOAD_DIR   = os.path.join(BASE_DIR, 'uploads')
+ALLOWED_IMG  = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico'}
+MAX_UPLOAD   = 5 * 1024 * 1024  # 5 MB
 
 app = Flask(__name__, static_folder=STATIC_DIR)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -265,6 +269,38 @@ def api_delete_app(app_id):
         conn.execute('DELETE FROM apps WHERE id = ?', (app_id,))
         conn.commit()
     return jsonify({'ok': True})
+
+# ── File upload ─────────────────────────────────────────────────────
+
+@app.route('/api/upload', methods=['POST'])
+def api_upload():
+    if 'file' not in request.files:
+        return jsonify({'error': 'Aucun fichier fourni'}), 400
+    f = request.files['file']
+    if not f.filename:
+        return jsonify({'error': 'Nom de fichier manquant'}), 400
+    if not (f.content_type or '').startswith('image/'):
+        return jsonify({'error': 'Seules les images sont acceptées'}), 400
+    ext = os.path.splitext(f.filename)[1].lower()
+    if ext not in ALLOWED_IMG:
+        return jsonify({'error': f'Extension non autorisée (autorisées : {", ".join(sorted(ALLOWED_IMG))})'}), 400
+    data = f.stream.read(MAX_UPLOAD + 1)
+    if len(data) > MAX_UPLOAD:
+        return jsonify({'error': 'Fichier trop volumineux (max 5 Mo)'}), 413
+    os.makedirs(UPLOAD_DIR, exist_ok=True)
+    filename = uuid.uuid4().hex + ext
+    with open(os.path.join(UPLOAD_DIR, filename), 'wb') as fp:
+        fp.write(data)
+    log.info('Upload saved: %s', filename)
+    return jsonify({'url': f'/uploads/{filename}'}), 201
+
+
+@app.route('/uploads/<filename>')
+def serve_upload(filename):
+    if not re.match(r'^[0-9a-f]{32}\.[a-z0-9]+$', filename):
+        return jsonify({'error': 'Not found'}), 404
+    return send_from_directory(UPLOAD_DIR, filename)
+
 
 # ── Static files (dev fallback — nginx handles this in production) ─
 

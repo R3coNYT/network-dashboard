@@ -717,6 +717,63 @@ a {
   margin-top: 1px;
 }
 
+/* Image input widget */
+.image-input-group {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.image-input-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.image-input-row > input[type="text"] {
+  flex: 1;
+  min-width: 0;
+}
+
+.upload-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 14px;
+  height: 40px;
+  background: var(--surface-2);
+  border: 1px solid var(--border);
+  border-radius: var(--r-sm);
+  color: var(--text-2);
+  font-size: 0.8rem;
+  font-weight: 500;
+  cursor: pointer;
+  flex-shrink: 0;
+  white-space: nowrap;
+  transition: border-color var(--t-fast), background var(--t-fast), color var(--t-fast);
+  user-select: none;
+}
+
+.upload-label svg {
+  width: 14px;
+  height: 14px;
+  flex-shrink: 0;
+}
+
+.upload-label:hover {
+  border-color: var(--border-hover);
+  background: var(--surface-3);
+  color: var(--text);
+}
+
+.image-thumb {
+  width: 48px;
+  height: 48px;
+  object-fit: cover;
+  border-radius: var(--r-sm);
+  border: 1px solid var(--border);
+}
+
 /* External link icon on hover */
 .app-card-open-icon {
   opacity: 0;

@@ -104,6 +104,31 @@ function displayUrl(rawUrl, port) {
 }
 
 // ================================================================
+// IMAGE UPLOAD
+// ================================================================
+
+async function uploadImageFile(file) {
+  const fd = new FormData();
+  fd.append('file', file);
+  const res  = await fetch('/api/upload', { method: 'POST', body: fd });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.error || 'Upload échoué');
+  return data.url;
+}
+
+function updateImageThumb(thumbId, src) {
+  const thumb = document.getElementById(thumbId);
+  if (!thumb) return;
+  if (src) {
+    thumb.src    = src;
+    thumb.hidden = false;
+  } else {
+    thumb.src    = '';
+    thumb.hidden = true;
+  }
+}
+
+// ================================================================
 // TOAST NOTIFICATIONS
 // ================================================================
 
@@ -149,6 +174,8 @@ function closeModal(id) {
   // Reset forms
   const form = overlay.querySelector('form');
   if (form) form.reset();
+  // Reset image thumbs
+  overlay.querySelectorAll('.image-thumb').forEach(t => { t.src = ''; t.hidden = true; });
   // Reset color picker to first swatch
   resetColorPicker();
 }
@@ -837,20 +864,25 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ── Forms ────────────────────────────────────────────────────
-  document.getElementById('formAddApp').addEventListener('submit', e => {
+  document.getElementById('formAddApp').addEventListener('submit', async e => {
     e.preventDefault();
     const name        = document.getElementById('appName').value.trim();
     const url         = document.getElementById('appUrl').value.trim();
     const port        = document.getElementById('appPort').value.trim();
     const catId       = document.getElementById('appCategory').value;
     const description = document.getElementById('appDescription').value.trim();
-    const imageUrl    = document.getElementById('appImageUrl').value.trim();
+    const fileInput   = document.getElementById('appImageFile');
+    let   imageUrl    = document.getElementById('appImageUrl').value.trim();
     if (!name || !url) return;
+    if (fileInput.files && fileInput.files[0]) {
+      try { imageUrl = await uploadImageFile(fileInput.files[0]); }
+      catch (err) { showToast(err.message, 'error'); return; }
+    }
     closeModal('modalAddApp');
     addApp({ name, url, port: port || null, categoryId: catId, description, imageUrl });
   });
 
-  document.getElementById('formEditApp').addEventListener('submit', e => {
+  document.getElementById('formEditApp').addEventListener('submit', async e => {
     e.preventDefault();
     const id          = document.getElementById('editAppId').value;
     const name        = document.getElementById('editAppName').value.trim();
@@ -858,8 +890,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     const port        = document.getElementById('editAppPort').value.trim();
     const catId       = document.getElementById('editAppCategory').value;
     const description = document.getElementById('editAppDescription').value.trim();
-    const imageUrl    = document.getElementById('editAppImageUrl').value.trim();
+    const fileInput   = document.getElementById('editAppImageFile');
+    let   imageUrl    = document.getElementById('editAppImageUrl').value.trim();
     if (!id || !name || !url) return;
+    if (fileInput.files && fileInput.files[0]) {
+      try { imageUrl = await uploadImageFile(fileInput.files[0]); }
+      catch (err) { showToast(err.message, 'error'); return; }
+    }
     closeModal('modalEditApp');
     updateApp(id, { name, url, port: port || null, categoryId: catId, description, imageUrl });
   });
@@ -950,6 +987,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       document.getElementById('editAppPort').value        = app.port || '';
       document.getElementById('editAppDescription').value = app.description || '';
       document.getElementById('editAppImageUrl').value    = app.image_url   || '';
+      updateImageThumb('editAppImageThumb', app.image_url || '');
       populateCategorySelect('editAppCategory', app.category_id);
       openModal('modalEditApp');
     }
@@ -988,6 +1026,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!card || e.target !== card) return;
     e.preventDefault();
     card.querySelector('.app-card-link')?.click();
+  });
+
+  // ── Image inputs: file preview + URL live preview ─────────────
+  document.getElementById('appImageFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('appImageUrl').value = '';
+    const reader = new FileReader();
+    reader.onload = ev => updateImageThumb('appImageThumb', ev.target.result);
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('appImageUrl').addEventListener('input', e => {
+    updateImageThumb('appImageThumb', e.target.value.trim());
+  });
+
+  document.getElementById('editAppImageFile').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+    document.getElementById('editAppImageUrl').value = '';
+    const reader = new FileReader();
+    reader.onload = ev => updateImageThumb('editAppImageThumb', ev.target.result);
+    reader.readAsDataURL(file);
+  });
+  document.getElementById('editAppImageUrl').addEventListener('input', e => {
+    updateImageThumb('editAppImageThumb', e.target.value.trim());
   });
 
 });

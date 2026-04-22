@@ -34,7 +34,7 @@ warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 # ── Sync source → /opt/network-dashboard ─────────────────────────
 if command -v rsync &>/dev/null; then
     info "Synchronisation des fichiers vers ${APP_DIR}..."
-    rsync -a --exclude='.git' --exclude='.venv' --exclude='netdashboard.db' \
+    rsync -a --exclude='.git' --exclude='.venv' --exclude='netdashboard.db' --exclude='uploads/' \
         "${SOURCE_DIR}/" "${APP_DIR}/"
     chown -R "${SERVICE_USER}:${SERVICE_USER}" "$APP_DIR" 2>/dev/null || true
     success "Fichiers synchronisés dans ${APP_DIR}"
