@@ -55,7 +55,7 @@ def init_db():
             );
 
             INSERT OR IGNORE INTO categories (id, name, color, is_protected, sort_order)
-            VALUES ('uncategorized', 'Non classé', '#64748b', 1, 0);
+            VALUES ('uncategorized', 'Uncategorized', '#64748b', 1, 0);
         ''')
         conn.commit()
         # Migration: add sort_order to existing apps tables
@@ -275,18 +275,18 @@ def api_delete_app(app_id):
 @app.route('/api/upload', methods=['POST'])
 def api_upload():
     if 'file' not in request.files:
-        return jsonify({'error': 'Aucun fichier fourni'}), 400
+        return jsonify({'error': 'No file provided'}), 400
     f = request.files['file']
     if not f.filename:
-        return jsonify({'error': 'Nom de fichier manquant'}), 400
+        return jsonify({'error': 'Missing filename'}), 400
     if not (f.content_type or '').startswith('image/'):
-        return jsonify({'error': 'Seules les images sont acceptées'}), 400
+        return jsonify({'error': 'Only image files are accepted'}), 400
     ext = os.path.splitext(f.filename)[1].lower()
     if ext not in ALLOWED_IMG:
-        return jsonify({'error': f'Extension non autorisée (autorisées : {", ".join(sorted(ALLOWED_IMG))})'}), 400
+        return jsonify({'error': f'Extension not allowed (allowed: {", ".join(sorted(ALLOWED_IMG))})'}), 400
     data = f.stream.read(MAX_UPLOAD + 1)
     if len(data) > MAX_UPLOAD:
-        return jsonify({'error': 'Fichier trop volumineux (max 5 Mo)'}), 413
+        return jsonify({'error': 'File too large (max 5 MB)'}), 413
     os.makedirs(UPLOAD_DIR, exist_ok=True)
     filename = uuid.uuid4().hex + ext
     with open(os.path.join(UPLOAD_DIR, filename), 'wb') as fp:

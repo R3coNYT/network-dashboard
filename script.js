@@ -112,7 +112,7 @@ async function uploadImageFile(file) {
   fd.append('file', file);
   const res  = await fetch('/api/upload', { method: 'POST', body: fd });
   const data = await res.json().catch(() => ({}));
-  if (!res.ok) throw new Error(data.error || 'Upload échoué');
+  if (!res.ok) throw new Error(data.error || 'Upload failed');
   return data.url;
 }
 
@@ -145,13 +145,13 @@ function setUploadState(prefix, state) {
     if (submitBtn) submitBtn.disabled = false;
 
   } else if (state === 'uploading') {
-    statusEl.innerHTML = '<span class="upload-spinner" aria-label="Upload en cours…"></span>';
+    statusEl.innerHTML = '<span class="upload-spinner" aria-label="Uploading…"></span>';
     statusEl.hidden    = false;
     if (submitBtn) submitBtn.disabled = true;
 
   } else if (state === 'done') {
     statusEl.innerHTML = `
-      <span class="upload-check" aria-label="Upload terminé">
+      <span class="upload-check" aria-label="Upload complete">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
              stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
           <polyline points="20 6 9 17 4 12"/>
@@ -236,7 +236,7 @@ let _confirmCallback = null;
 
 function showConfirm(message, title, onConfirm) {
   document.getElementById('confirmMessage').textContent = message;
-  document.getElementById('titleConfirm').textContent = title || 'Confirmer';
+  document.getElementById('titleConfirm').textContent = title || 'Confirm';
   _confirmCallback = onConfirm;
   openModal('modalConfirm');
 }
@@ -255,7 +255,7 @@ async function addApp({ name, url, port, categoryId, description, imageUrl }) {
     });
     state.apps.push(app);
     renderAll();
-    showToast(`"${app.name}" ajouté avec succès`);
+    showToast(`"${app.name}" added successfully`);
   } catch (err) { showToast(err.message, 'error'); }
 }
 
@@ -270,7 +270,7 @@ async function updateApp(id, { name, url, port, categoryId, description, imageUr
     const idx = state.apps.findIndex(a => a.id === id);
     if (idx !== -1) state.apps[idx] = updated;
     renderAll();
-    showToast(`"${updated.name}" mis à jour`);
+    showToast(`"${updated.name}" updated`);
   } catch (err) { showToast(err.message, 'error'); }
 }
 
@@ -281,7 +281,7 @@ async function deleteApp(id) {
     await api.delete(`/api/apps/${id}`);
     state.apps = state.apps.filter(a => a.id !== id);
     renderAll();
-    showToast(`"${app.name}" supprimé`, 'info');
+    showToast(`"${app.name}" deleted`, 'info');
   } catch (err) { showToast(err.message, 'error'); }
 }
 
@@ -290,7 +290,7 @@ async function addCategory({ name, color }) {
     const cat = await api.post('/api/categories', { name: name.trim(), color });
     state.categories.push(cat);
     renderAll();
-    showToast(`Catégorie "${cat.name}" créée`);
+    showToast(`Category "${cat.name}" created`);
   } catch (err) { showToast(err.message, 'error'); }
 }
 
@@ -305,8 +305,8 @@ async function deleteCategory(id) {
     renderAll();
     const n = res.moved || 0;
     showToast(n > 0
-      ? `Catégorie supprimée — ${n} app${n > 1 ? 's' : ''} déplacée${n > 1 ? 's' : ''} dans "Non classé"`
-      : `Catégorie "${cat.name}" supprimée`, 'info');
+      ? `Category deleted — ${n} app${n > 1 ? 's' : ''} moved to "Uncategorized"`
+      : `Category "${cat.name}" deleted`, 'info');
   } catch (err) { showToast(err.message, 'error'); }
 }
 
@@ -373,7 +373,7 @@ async function relocateApp(appId, targetCatId, beforeAppId) {
     await api.put('/api/apps/reorder', reorderPayload);
     if (isMove) {
       const cat = state.categories.find(c => c.id === targetCatId);
-      showToast(`"${appRef.name}" déplacé vers "${cat?.name || 'la catégorie'}"`);
+      showToast(`"${appRef.name}" moved to "${cat?.name || 'the category'}"`);
     }
   } catch (err) {
     await loadData();
@@ -442,8 +442,8 @@ function buildEmptyPage() {
           <rect x="14" y="14" width="7" height="7" rx="1"/>
         </svg>
       </div>
-      <h2>Aucune catégorie</h2>
-      <p>Commencez par créer une catégorie, puis ajoutez vos applications.</p>
+      <h2>No categories</h2>
+      <p>Start by creating a category, then add your applications.</p>
     </div>
   `;
 }
@@ -457,8 +457,8 @@ function buildCategoryHTML(cat) {
     <button class="btn-icon btn-icon-danger"
             data-action="delete-category"
             data-cat-id="${escapeHtml(cat.id)}"
-            title="Supprimer la catégorie"
-            aria-label="Supprimer ${escapeHtml(cat.name)}">
+            title="Delete category"
+            aria-label="Delete ${escapeHtml(cat.name)}">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polyline points="3 6 5 6 21 6"/>
         <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
@@ -471,8 +471,8 @@ function buildCategoryHTML(cat) {
     <button class="btn-icon"
             data-action="rename-category"
             data-cat-id="${escapeHtml(cat.id)}"
-            title="Renommer la catégorie"
-            aria-label="Renommer ${escapeHtml(cat.name)}">
+            title="Rename category"
+            aria-label="Rename ${escapeHtml(cat.name)}">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
         <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -480,7 +480,7 @@ function buildCategoryHTML(cat) {
     </button>` : '';
 
   const gripHandle = !cat.is_protected ? `
-    <span class="cat-drag-handle" aria-hidden="true" title="Réorganiser la catégorie">
+    <span class="cat-drag-handle" aria-hidden="true" title="Reorder category">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
         <circle cx="9"  cy="5"  r="1.3" fill="currentColor"/>
         <circle cx="15" cy="5"  r="1.3" fill="currentColor"/>
@@ -496,7 +496,7 @@ function buildCategoryHTML(cat) {
          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
            <path d="M12 5v14M5 12h14"/>
          </svg>
-         <span>Déposez une application ici</span>
+         <span>Drop an application here</span>
        </div>`
     : apps.map(buildAppCardHTML).join('');
 
@@ -517,8 +517,8 @@ function buildCategoryHTML(cat) {
           <button class="btn-icon"
                   data-action="add-app-to-cat"
                   data-cat-id="${escapeHtml(cat.id)}"
-                  title="Ajouter une app dans cette catégorie"
-                  aria-label="Ajouter une app dans ${escapeHtml(cat.name)}">
+                  title="Add an app to this category"
+                  aria-label="Add an app to ${escapeHtml(cat.name)}">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
               <line x1="12" y1="5" x2="12" y2="19"/>
               <line x1="5" y1="12" x2="19" y2="12"/>
@@ -530,7 +530,7 @@ function buildCategoryHTML(cat) {
       </div>
       <div class="drop-zone ${isEmpty ? 'drop-zone-empty' : ''}"
            data-category-id="${escapeHtml(cat.id)}"
-           aria-label="Zone de dépôt pour ${escapeHtml(cat.name)}">
+           aria-label="Drop zone for ${escapeHtml(cat.name)}">
         ${appsHTML}
       </div>
     </section>
@@ -595,8 +595,8 @@ function buildAppCardHTML(app) {
           <button class="app-action-btn app-edit-btn"
                   data-action="edit-app"
                   data-app-id="${escapeHtml(app.id)}"
-                  aria-label="Modifier ${escapeHtml(app.name)}"
-                  title="Modifier">
+                  aria-label="Edit ${escapeHtml(app.name)}"
+                  title="Edit">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
               <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
               <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
@@ -605,8 +605,8 @@ function buildAppCardHTML(app) {
           <button class="app-action-btn app-delete-action-btn"
                   data-action="delete-app"
                   data-app-id="${escapeHtml(app.id)}"
-                  aria-label="Supprimer ${escapeHtml(app.name)}"
-                  title="Supprimer">
+                  aria-label="Delete ${escapeHtml(app.name)}"
+                  title="Delete">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
               <line x1="18" y1="6" x2="6" y2="18"/>
               <line x1="6"  y1="6" x2="18" y2="18"/>
@@ -891,7 +891,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   try {
     await loadData();
   } catch (_) {
-    showToast('Impossible de joindre le serveur. Vérifiez que Flask est démarré.', 'error');
+    showToast('Unable to reach the server. Make sure Flask is running.', 'error');
   }
   renderAll();
 
@@ -1005,7 +1005,7 @@ document.addEventListener('DOMContentLoaded', async () => {
       e.stopPropagation();
       const appId = el.dataset.appId;
       const app   = state.apps.find(a => a.id === appId);
-      if (app) showConfirm(`Supprimer "${app.name}" ?`, "Supprimer l'application", () => deleteApp(appId));
+      if (app) showConfirm(`Delete "${app.name}"?`, 'Delete application', () => deleteApp(appId));
     }
 
     if (action === 'edit-app') {
@@ -1030,9 +1030,9 @@ document.addEventListener('DOMContentLoaded', async () => {
       if (!cat) return;
       const n   = state.apps.filter(a => a.category_id === catId).length;
       const msg = n > 0
-        ? `Supprimer "${cat.name}" ? Les ${n} application${n > 1 ? 's' : ''} seront déplacées dans "Non classé".`
-        : `Supprimer la catégorie "${cat.name}" ?`;
-      showConfirm(msg, 'Supprimer la catégorie', () => deleteCategory(catId));
+        ? `Delete "${cat.name}"? The ${n} application${n > 1 ? 's' : ''} will be moved to "Uncategorized".`
+        : `Delete category "${cat.name}"?`;
+      showConfirm(msg, 'Delete category', () => deleteCategory(catId));
     }
 
     if (action === 'rename-category') {

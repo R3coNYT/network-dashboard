@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="fr">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -31,19 +31,19 @@
         </div>
         <div class="brand-text">
           <h1 class="brand-name">NetDashboard</h1>
-          <p class="brand-sub">Centralisez vos services</p>
+          <p class="brand-sub">Centralize your services</p>
         </div>
       </div>
       <div class="header-actions">
-        <button class="btn btn-ghost" id="btnAddCategory" aria-label="Créer une catégorie">
+        <button class="btn btn-ghost" id="btnAddCategory" aria-label="Create a category">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
             <line x1="12" y1="11" x2="12" y2="17"/>
             <line x1="9" y1="14" x2="15" y2="14"/>
           </svg>
-          <span>Catégorie</span>
+          <span>Category</span>
         </button>
-        <button class="btn btn-primary" id="btnAddApp" aria-label="Ajouter une application">
+        <button class="btn btn-primary" id="btnAddApp" aria-label="Add an application">
           <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
             <line x1="12" y1="5" x2="12" y2="19"/>
             <line x1="5" y1="12" x2="19" y2="12"/>
@@ -65,40 +65,40 @@
   <div class="modal-overlay" id="modalAddApp" role="dialog" aria-modal="true" aria-labelledby="titleAddApp">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title" id="titleAddApp">Ajouter une application</h2>
-        <button class="modal-close" data-close="modalAddApp" aria-label="Fermer">&times;</button>
+        <h2 class="modal-title" id="titleAddApp">Add an application</h2>
+        <button class="modal-close" data-close="modalAddApp" aria-label="Close">&times;</button>
       </div>
       <form id="formAddApp" class="modal-form" novalidate>
         <div class="form-group">
-          <label for="appName">Nom de l'application <span class="required">*</span></label>
-          <input type="text" id="appName" placeholder="ex : Proxmox, Portainer, Grafana…" autocomplete="off" required>
+          <label for="appName">Application name <span class="required">*</span></label>
+          <input type="text" id="appName" placeholder="e.g. Proxmox, Portainer, Grafana…" autocomplete="off" required>
         </div>
         <div class="form-group">
-          <label for="appUrl">Adresse (URL ou IP) <span class="required">*</span></label>
-          <input type="text" id="appUrl" placeholder="ex : 192.168.1.100 ou https://app.example.com" autocomplete="off" required>
+          <label for="appUrl">Address (URL or IP) <span class="required">*</span></label>
+          <input type="text" id="appUrl" placeholder="e.g. 192.168.1.100 or https://app.example.com" autocomplete="off" required>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="appPort">Port <span class="optional">(optionnel)</span></label>
+            <label for="appPort">Port <span class="optional">(optional)</span></label>
             <input type="number" id="appPort" placeholder="8006" min="1" max="65535" autocomplete="off">
           </div>
           <div class="form-group">
-            <label for="appCategory">Catégorie</label>
+            <label for="appCategory">Category</label>
             <select id="appCategory">
               <!-- populated by JS -->
             </select>
           </div>
         </div>
         <div class="form-group">
-          <label for="appDescription">Description <span class="optional">(optionnel)</span></label>
-          <textarea id="appDescription" rows="2" placeholder="Brève description de l'application…" autocomplete="off"></textarea>
+          <label for="appDescription">Description <span class="optional">(optional)</span></label>
+          <textarea id="appDescription" rows="2" placeholder="Brief description of the application…" autocomplete="off"></textarea>
         </div>
         <div class="form-group">
-          <label>Image <span class="optional">(optionnel)</span></label>
+          <label>Image <span class="optional">(optional)</span></label>
           <div class="image-input-group">
             <div class="image-input-row">
               <input type="text" id="appImageUrl" placeholder="https://…/logo.png" autocomplete="off">
-              <label class="upload-label" for="appImageFile" title="Envoyer depuis votre appareil">
+              <label class="upload-label" for="appImageFile" title="Upload from your device">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 Upload
                 <input type="file" id="appImageFile" accept="image/*" hidden>
@@ -108,8 +108,8 @@
           </div>
         </div>
         <div class="form-footer">
-          <button type="button" class="btn btn-ghost" data-close="modalAddApp">Annuler</button>
-          <button type="submit" class="btn btn-primary">Ajouter</button>
+          <button type="button" class="btn btn-ghost" data-close="modalAddApp">Cancel</button>
+          <button type="submit" class="btn btn-primary">Add</button>
         </div>
       </form>
     </div>
@@ -119,30 +119,30 @@
   <div class="modal-overlay" id="modalAddCategory" role="dialog" aria-modal="true" aria-labelledby="titleAddCat">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title" id="titleAddCat">Nouvelle catégorie</h2>
-        <button class="modal-close" data-close="modalAddCategory" aria-label="Fermer">&times;</button>
+        <h2 class="modal-title" id="titleAddCat">New category</h2>
+        <button class="modal-close" data-close="modalAddCategory" aria-label="Close">&times;</button>
       </div>
       <form id="formAddCategory" class="modal-form" novalidate>
         <div class="form-group">
-          <label for="categoryName">Nom de la catégorie <span class="required">*</span></label>
-          <input type="text" id="categoryName" placeholder="ex : Infrastructure, Monitoring, Médias…" autocomplete="off" required>
+          <label for="categoryName">Category name <span class="required">*</span></label>
+          <input type="text" id="categoryName" placeholder="e.g. Infrastructure, Monitoring, Media…" autocomplete="off" required>
         </div>
         <div class="form-group">
-          <label>Couleur d'accent</label>
-          <div class="color-picker" id="colorPicker" role="radiogroup" aria-label="Choisir une couleur">
+          <label>Accent color</label>
+          <div class="color-picker" id="colorPicker" role="radiogroup" aria-label="Choose a color">
             <button type="button" class="color-swatch selected" data-color="#6366f1" style="background:#6366f1" title="Indigo" aria-label="Indigo" aria-pressed="true"></button>
             <button type="button" class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6" title="Violet" aria-label="Violet" aria-pressed="false"></button>
             <button type="button" class="color-swatch" data-color="#06b6d4" style="background:#06b6d4" title="Cyan" aria-label="Cyan" aria-pressed="false"></button>
-            <button type="button" class="color-swatch" data-color="#10b981" style="background:#10b981" title="Vert" aria-label="Vert" aria-pressed="false"></button>
-            <button type="button" class="color-swatch" data-color="#f59e0b" style="background:#f59e0b" title="Ambre" aria-label="Ambre" aria-pressed="false"></button>
-            <button type="button" class="color-swatch" data-color="#ef4444" style="background:#ef4444" title="Rouge" aria-label="Rouge" aria-pressed="false"></button>
-            <button type="button" class="color-swatch" data-color="#ec4899" style="background:#ec4899" title="Rose" aria-label="Rose" aria-pressed="false"></button>
-            <button type="button" class="color-swatch" data-color="#0ea5e9" style="background:#0ea5e9" title="Bleu ciel" aria-label="Bleu ciel" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#10b981" style="background:#10b981" title="Green" aria-label="Green" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#f59e0b" style="background:#f59e0b" title="Amber" aria-label="Amber" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#ef4444" style="background:#ef4444" title="Red" aria-label="Red" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#ec4899" style="background:#ec4899" title="Pink" aria-label="Pink" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#0ea5e9" style="background:#0ea5e9" title="Sky blue" aria-label="Sky blue" aria-pressed="false"></button>
           </div>
         </div>
         <div class="form-footer">
-          <button type="button" class="btn btn-ghost" data-close="modalAddCategory">Annuler</button>
-          <button type="submit" class="btn btn-primary">Créer</button>
+          <button type="button" class="btn btn-ghost" data-close="modalAddCategory">Cancel</button>
+          <button type="submit" class="btn btn-primary">Create</button>
         </div>
       </form>
     </div>
@@ -152,33 +152,33 @@
   <div class="modal-overlay" id="modalEditApp" role="dialog" aria-modal="true" aria-labelledby="titleEditApp">
     <div class="modal">
       <div class="modal-header">
-        <h2 class="modal-title" id="titleEditApp">Modifier l'application</h2>
-        <button class="modal-close" data-close="modalEditApp" aria-label="Fermer">&times;</button>
+        <h2 class="modal-title" id="titleEditApp">Edit application</h2>
+        <button class="modal-close" data-close="modalEditApp" aria-label="Close">&times;</button>
       </div>
       <form id="formEditApp" class="modal-form" novalidate>
         <input type="hidden" id="editAppId">
         <div class="form-group">
-          <label for="editAppName">Nom <span class="required">*</span></label>
+          <label for="editAppName">Name <span class="required">*</span></label>
           <input type="text" id="editAppName" autocomplete="off" required>
         </div>
         <div class="form-group">
-          <label for="editAppUrl">Adresse (URL ou IP) <span class="required">*</span></label>
+          <label for="editAppUrl">Address (URL or IP) <span class="required">*</span></label>
           <input type="text" id="editAppUrl" autocomplete="off" required>
         </div>
         <div class="form-row">
           <div class="form-group">
-            <label for="editAppPort">Port <span class="optional">(optionnel)</span></label>
+            <label for="editAppPort">Port <span class="optional">(optional)</span></label>
             <input type="number" id="editAppPort" min="1" max="65535" autocomplete="off">
           </div>
           <div class="form-group">
-            <label for="editAppCategory">Catégorie</label>
+            <label for="editAppCategory">Category</label>
             <select id="editAppCategory">
               <!-- populated by JS -->
             </select>
           </div>
         </div>
         <div class="form-group">
-          <label for="editAppDescription">Description <span class="optional">(optionnel)</span></label>
+          <label for="editAppDescription">Description <span class="optional">(optional)</span></label>
           <textarea id="editAppDescription" rows="2" autocomplete="off"></textarea>
         </div>
         <div class="form-group">
@@ -186,19 +186,19 @@
           <div class="image-input-group">
             <div class="image-input-row">
               <input type="text" id="editAppImageUrl" placeholder="https://…/logo.png" autocomplete="off">
-              <label class="upload-label" for="editAppImageFile" title="Envoyer depuis votre appareil">
+              <label class="upload-label" for="editAppImageFile" title="Upload from your device">
                 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
                 Upload
                 <input type="file" id="editAppImageFile" accept="image/*" hidden>
               </label>
               <span class="upload-status" id="editAppUploadStatus" aria-live="polite" hidden></span>
             </div>
-            <img class="image-thumb" id="editAppImageThumb" src="" alt="Aperçu" hidden>
+            <img class="image-thumb" id="editAppImageThumb" src="" alt="Preview" hidden>
           </div>
         </div>
         <div class="form-footer">
-          <button type="button" class="btn btn-ghost" data-close="modalEditApp">Annuler</button>
-          <button type="submit" class="btn btn-primary">Sauvegarder</button>
+          <button type="button" class="btn btn-ghost" data-close="modalEditApp">Cancel</button>
+          <button type="submit" class="btn btn-primary">Save</button>
         </div>
       </form>
     </div>
@@ -208,18 +208,18 @@
   <div class="modal-overlay" id="modalRenameCategory" role="dialog" aria-modal="true" aria-labelledby="titleRenameCategory">
     <div class="modal modal-sm">
       <div class="modal-header">
-        <h2 class="modal-title" id="titleRenameCategory">Renommer la catégorie</h2>
-        <button class="modal-close" data-close="modalRenameCategory" aria-label="Fermer">&times;</button>
+        <h2 class="modal-title" id="titleRenameCategory">Rename category</h2>
+        <button class="modal-close" data-close="modalRenameCategory" aria-label="Close">&times;</button>
       </div>
       <form id="formRenameCategory" class="modal-form" novalidate>
         <input type="hidden" id="renameCatId">
         <div class="form-group">
-          <label for="renameCatName">Nouveau nom <span class="required">*</span></label>
-          <input type="text" id="renameCatName" placeholder="ex : Infrastructure, Monitoring…" autocomplete="off" required>
+          <label for="renameCatName">New name <span class="required">*</span></label>
+          <input type="text" id="renameCatName" placeholder="e.g. Infrastructure, Monitoring…" autocomplete="off" required>
         </div>
         <div class="form-footer">
-          <button type="button" class="btn btn-ghost" data-close="modalRenameCategory">Annuler</button>
-          <button type="submit" class="btn btn-primary">Renommer</button>
+          <button type="button" class="btn btn-ghost" data-close="modalRenameCategory">Cancel</button>
+          <button type="submit" class="btn btn-primary">Rename</button>
         </div>
       </form>
     </div>
@@ -229,12 +229,12 @@
   <div class="modal-overlay" id="modalConfirm" role="dialog" aria-modal="true" aria-labelledby="titleConfirm">
     <div class="modal modal-sm">
       <div class="modal-header">
-        <h2 class="modal-title" id="titleConfirm">Confirmer la suppression</h2>
+        <h2 class="modal-title" id="titleConfirm">Confirm deletion</h2>
       </div>
       <p class="modal-message" id="confirmMessage"></p>
       <div class="form-footer">
-        <button class="btn btn-ghost" id="confirmCancel">Annuler</button>
-        <button class="btn btn-danger" id="confirmOk">Supprimer</button>
+        <button class="btn btn-ghost" id="confirmCancel">Cancel</button>
+        <button class="btn btn-danger" id="confirmOk">Delete</button>
       </div>
     </div>
   </div>
