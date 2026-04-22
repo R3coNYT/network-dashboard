@@ -130,6 +130,43 @@
     </div>
   </div>
 
+  <!-- ===== MODAL: Edit App ===== -->
+  <div class="modal-overlay" id="modalEditApp" role="dialog" aria-modal="true" aria-labelledby="titleEditApp">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="titleEditApp">Modifier l'application</h2>
+        <button class="modal-close" data-close="modalEditApp" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formEditApp" class="modal-form" novalidate>
+        <input type="hidden" id="editAppId">
+        <div class="form-group">
+          <label for="editAppName">Nom <span class="required">*</span></label>
+          <input type="text" id="editAppName" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label for="editAppUrl">Adresse (URL ou IP) <span class="required">*</span></label>
+          <input type="text" id="editAppUrl" autocomplete="off" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="editAppPort">Port <span class="optional">(optionnel)</span></label>
+            <input type="number" id="editAppPort" min="1" max="65535" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label for="editAppCategory">Catégorie</label>
+            <select id="editAppCategory">
+              <!-- populated by JS -->
+            </select>
+          </div>
+        </div>
+        <div class="form-footer">
+          <button type="button" class="btn btn-ghost" data-close="modalEditApp">Annuler</button>
+          <button type="submit" class="btn btn-primary">Sauvegarder</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
   <!-- ===== MODAL: Confirm ===== -->
   <div class="modal-overlay" id="modalConfirm" role="dialog" aria-modal="true" aria-labelledby="titleConfirm">
     <div class="modal modal-sm">

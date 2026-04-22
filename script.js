@@ -1,45 +1,40 @@
 /* ============================================================
    NetDashboard — script.js
-   State management, rendering, drag-and-drop, persistence
+   API-backed state, rendering, drag-and-drop
    ============================================================ */
 
 // ================================================================
-// STATE & PERSISTENCE
+// API LAYER
 // ================================================================
 
-const STORAGE_KEY = 'netdashboard_v1';
-
-const DEFAULT_STATE = {
-  categories: [
-    { id: 'uncategorized', name: 'Non classé', color: '#64748b', protected: true }
-  ],
-  apps: []
+const api = {
+  async request(method, path, body) {
+    const opts = { method, headers: {} };
+    if (body !== undefined) {
+      opts.headers['Content-Type'] = 'application/json';
+      opts.body = JSON.stringify(body);
+    }
+    const res  = await fetch(path, opts);
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) throw new Error(data.error || `${method} ${path} → HTTP ${res.status}`);
+    return data;
+  },
+  get:    (path)       => api.request('GET',    path),
+  post:   (path, body) => api.request('POST',   path, body),
+  put:    (path, body) => api.request('PUT',    path, body),
+  delete: (path)       => api.request('DELETE', path)
 };
 
-let state = loadState();
+// ── In-memory state (mirrors the DB) ─────────────────────────────
+const state = { categories: [], apps: [] };
 
-function loadState() {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (raw) {
-      const parsed = JSON.parse(raw);
-      // Ensure the uncategorized bucket always exists
-      if (!parsed.categories.find(c => c.id === 'uncategorized')) {
-        parsed.categories.unshift({
-          id: 'uncategorized',
-          name: 'Non classé',
-          color: '#64748b',
-          protected: true
-        });
-      }
-      return parsed;
-    }
-  } catch (_) { /* corrupted storage — start fresh */ }
-  return JSON.parse(JSON.stringify(DEFAULT_STATE));
-}
-
-function saveState() {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+async function loadData() {
+  const [cats, apps] = await Promise.all([
+    api.get('/api/categories'),
+    api.get('/api/apps')
+  ]);
+  state.categories = cats;
+  state.apps       = apps;
 }
 
 // ================================================================
@@ -178,82 +173,100 @@ function showConfirm(message, title, onConfirm) {
 }
 
 // ================================================================
-// CRUD OPERATIONS
+// CRUD OPERATIONS (async — all mutations go through the API)
 // ================================================================
 
-function addApp({ name, url, port, categoryId }) {
-  const app = {
-    id: 'app-' + generateId(),
-    name: name.trim(),
-    url: url.trim(),
-    port: port ? String(port).trim() : null,
-    categoryId: categoryId || 'uncategorized'
-  };
-  state.apps.push(app);
-  saveState();
-  renderAll();
-  showToast(`"${app.name}" ajouté avec succès`);
+async function addApp({ name, url, port, categoryId }) {
+  try {
+    const app = await api.post('/api/apps', {
+      name, url, port: port || null,
+      category_id: categoryId || 'uncategorized'
+    });
+    state.apps.push(app);
+    renderAll();
+    showToast(`"${app.name}" ajouté avec succès`);
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
-function deleteApp(id) {
+async function updateApp(id, { name, url, port, categoryId }) {
+  try {
+    const updated = await api.put(`/api/apps/${id}`, {
+      name, url, port: port || null,
+      category_id: categoryId || 'uncategorized'
+    });
+    const idx = state.apps.findIndex(a => a.id === id);
+    if (idx !== -1) state.apps[idx] = updated;
+    renderAll();
+    showToast(`"${updated.name}" mis à jour`);
+  } catch (err) { showToast(err.message, 'error'); }
+}
+
+async function deleteApp(id) {
   const app = state.apps.find(a => a.id === id);
   if (!app) return;
-  state.apps = state.apps.filter(a => a.id !== id);
-  saveState();
-  renderAll();
-  showToast(`"${app.name}" supprimé`, 'info');
+  try {
+    await api.delete(`/api/apps/${id}`);
+    state.apps = state.apps.filter(a => a.id !== id);
+    renderAll();
+    showToast(`"${app.name}" supprimé`, 'info');
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
-function addCategory({ name, color }) {
-  const cat = {
-    id: 'cat-' + generateId(),
-    name: name.trim(),
-    color: color || '#6366f1',
-    protected: false
-  };
-  state.categories.push(cat);
-  saveState();
-  renderAll();
-  showToast(`Catégorie "${cat.name}" créée`);
+async function addCategory({ name, color }) {
+  try {
+    const cat = await api.post('/api/categories', { name: name.trim(), color });
+    state.categories.push(cat);
+    renderAll();
+    showToast(`Catégorie "${cat.name}" créée`);
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
-function deleteCategory(id) {
+async function deleteCategory(id) {
   const cat = state.categories.find(c => c.id === id);
-  if (!cat || cat.protected) return;
-
-  const moved = state.apps.filter(a => a.categoryId === id).length;
-  state.apps.forEach(a => {
-    if (a.categoryId === id) a.categoryId = 'uncategorized';
-  });
-  state.categories = state.categories.filter(c => c.id !== id);
-  saveState();
-  renderAll();
-
-  const msg = moved > 0
-    ? `Catégorie supprimée — ${moved} app${moved > 1 ? 's' : ''} déplacée${moved > 1 ? 's' : ''} dans "Non classé"`
-    : `Catégorie "${cat.name}" supprimée`;
-  showToast(msg, 'info');
+  if (!cat || cat.is_protected) return;
+  try {
+    const res = await api.delete(`/api/categories/${id}`);
+    state.apps.filter(a => a.category_id === id)
+              .forEach(a => { a.category_id = 'uncategorized'; });
+    state.categories = state.categories.filter(c => c.id !== id);
+    renderAll();
+    const n = res.moved || 0;
+    showToast(n > 0
+      ? `Catégorie supprimée — ${n} app${n > 1 ? 's' : ''} déplacée${n > 1 ? 's' : ''} dans "Non classé"`
+      : `Catégorie "${cat.name}" supprimée`, 'info');
+  } catch (err) { showToast(err.message, 'error'); }
 }
 
-function moveApp(appId, targetCategoryId) {
+async function moveApp(appId, targetCatId) {
   const app = state.apps.find(a => a.id === appId);
-  if (!app || app.categoryId === targetCategoryId) return;
-  app.categoryId = targetCategoryId;
-  saveState();
+  if (!app || app.category_id === targetCatId) return;
+  const prev = app.category_id;
+  app.category_id = targetCatId; // optimistic update
   renderAll();
-  const cat = state.categories.find(c => c.id === targetCategoryId);
-  showToast(`"${app.name}" déplacé vers "${cat?.name || 'la catégorie'}"`);
+  try {
+    const updated = await api.put(`/api/apps/${appId}`, { category_id: targetCatId });
+    const idx = state.apps.findIndex(a => a.id === appId);
+    if (idx !== -1) state.apps[idx] = updated;
+    const cat = state.categories.find(c => c.id === targetCatId);
+    showToast(`"${app.name}" déplacé vers "${cat?.name || 'la catégorie'}"`);
+  } catch (err) {
+    app.category_id = prev; // rollback
+    renderAll();
+    showToast(err.message, 'error');
+  }
 }
 
 // ================================================================
 // RENDERING
 // ================================================================
 
-function populateCategorySelect(selectId = 'appCategory') {
+function populateCategorySelect(selectId = 'appCategory', selectedId = null) {
   const el = document.getElementById(selectId);
   if (!el) return;
   el.innerHTML = state.categories
-    .map(c => `<option value="${escapeHtml(c.id)}">${escapeHtml(c.name)}</option>`)
+    .map(c => `<option value="${escapeHtml(c.id)}"${
+      c.id === selectedId ? ' selected' : ''
+    }>${escapeHtml(c.name)}</option>`)
     .join('');
 }
 
@@ -267,7 +280,7 @@ function renderAll() {
 
   container.innerHTML = state.categories.map(buildCategoryHTML).join('');
   attachDragListeners();
-  populateCategorySelect();
+  populateCategorySelect('appCategory');
 }
 
 function buildEmptyPage() {
@@ -288,11 +301,11 @@ function buildEmptyPage() {
 }
 
 function buildCategoryHTML(cat) {
-  const apps = state.apps.filter(a => a.categoryId === cat.id);
+  const apps = state.apps.filter(a => a.category_id === cat.id);
   const count = apps.length;
   const isEmpty = count === 0;
 
-  const deleteBtn = !cat.protected ? `
+  const deleteBtn = !cat.is_protected ? `
     <button class="btn-icon btn-icon-danger"
             data-action="delete-category"
             data-cat-id="${escapeHtml(cat.id)}"
@@ -392,16 +405,28 @@ function buildAppCardHTML(app) {
             </svg>
           </span>
         </a>
-        <button class="app-delete-btn"
-                data-action="delete-app"
-                data-app-id="${escapeHtml(app.id)}"
-                aria-label="Supprimer ${escapeHtml(app.name)}"
-                title="Supprimer">
-          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <line x1="18" y1="6" x2="6" y2="18"/>
-            <line x1="6"  y1="6" x2="18" y2="18"/>
-          </svg>
-        </button>
+        <div class="app-card-actions">
+          <button class="app-action-btn app-edit-btn"
+                  data-action="edit-app"
+                  data-app-id="${escapeHtml(app.id)}"
+                  aria-label="Modifier ${escapeHtml(app.name)}"
+                  title="Modifier">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/>
+              <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/>
+            </svg>
+          </button>
+          <button class="app-action-btn app-delete-action-btn"
+                  data-action="delete-app"
+                  data-app-id="${escapeHtml(app.id)}"
+                  aria-label="Supprimer ${escapeHtml(app.name)}"
+                  title="Supprimer">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
+              <line x1="18" y1="6" x2="6" y2="18"/>
+              <line x1="6"  y1="6" x2="18" y2="18"/>
+            </svg>
+          </button>
+        </div>
       </div>
     </article>
   `;
@@ -476,14 +501,19 @@ function onZoneDrop(e) {
 // EVENT WIRING
 // ================================================================
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
 
-  // Initial render
+  // ── Load data from API, then render ─────────────────────────
+  try {
+    await loadData();
+  } catch (_) {
+    showToast('Impossible de joindre le serveur. Vérifiez que Flask est démarré.', 'error');
+  }
   renderAll();
 
   // ── Header buttons ──────────────────────────────────────────
   document.getElementById('btnAddApp').addEventListener('click', () => {
-    populateCategorySelect();
+    populateCategorySelect('appCategory');
     openModal('modalAddApp');
   });
 
@@ -494,25 +524,33 @@ document.addEventListener('DOMContentLoaded', () => {
   // ── Forms ────────────────────────────────────────────────────
   document.getElementById('formAddApp').addEventListener('submit', e => {
     e.preventDefault();
-    const name     = document.getElementById('appName').value.trim();
-    const url      = document.getElementById('appUrl').value.trim();
-    const port     = document.getElementById('appPort').value.trim();
-    const catId    = document.getElementById('appCategory').value;
-
+    const name  = document.getElementById('appName').value.trim();
+    const url   = document.getElementById('appUrl').value.trim();
+    const port  = document.getElementById('appPort').value.trim();
+    const catId = document.getElementById('appCategory').value;
     if (!name || !url) return;
-
     closeModal('modalAddApp');
     addApp({ name, url, port: port || null, categoryId: catId });
   });
 
+  document.getElementById('formEditApp').addEventListener('submit', e => {
+    e.preventDefault();
+    const id    = document.getElementById('editAppId').value;
+    const name  = document.getElementById('editAppName').value.trim();
+    const url   = document.getElementById('editAppUrl').value.trim();
+    const port  = document.getElementById('editAppPort').value.trim();
+    const catId = document.getElementById('editAppCategory').value;
+    if (!id || !name || !url) return;
+    closeModal('modalEditApp');
+    updateApp(id, { name, url, port: port || null, categoryId: catId });
+  });
+
   document.getElementById('formAddCategory').addEventListener('submit', e => {
     e.preventDefault();
-    const name  = document.getElementById('categoryName').value.trim();
+    const name   = document.getElementById('categoryName').value.trim();
     const swatch = document.querySelector('#colorPicker .color-swatch.selected');
-    const color = swatch ? swatch.dataset.color : '#6366f1';
-
+    const color  = swatch ? swatch.dataset.color : '#6366f1';
     if (!name) return;
-
     closeModal('modalAddCategory');
     addCategory({ name, color });
   });
@@ -529,19 +567,17 @@ document.addEventListener('DOMContentLoaded', () => {
     swatch.setAttribute('aria-pressed', 'true');
   });
 
-  // ── Modal: close on overlay click ───────────────────────────
+  // ── Modal: close on overlay click / [data-close] / Escape ───
   document.querySelectorAll('.modal-overlay').forEach(overlay => {
     overlay.addEventListener('click', e => {
       if (e.target === overlay) closeModal(overlay.id);
     });
   });
 
-  // ── Modal: [data-close] buttons ──────────────────────────────
   document.querySelectorAll('[data-close]').forEach(btn => {
     btn.addEventListener('click', () => closeModal(btn.dataset.close));
   });
 
-  // ── Keyboard: Escape closes topmost modal ───────────────────
   document.addEventListener('keydown', e => {
     if (e.key !== 'Escape') return;
     const active = [...document.querySelectorAll('.modal-overlay.active')];
@@ -572,14 +608,27 @@ document.addEventListener('DOMContentLoaded', () => {
       e.stopPropagation();
       const appId = el.dataset.appId;
       const app   = state.apps.find(a => a.id === appId);
-      if (app) showConfirm(`Supprimer "${app.name}" ?`, 'Supprimer l\'application', () => deleteApp(appId));
+      if (app) showConfirm(`Supprimer "${app.name}" ?`, "Supprimer l'application", () => deleteApp(appId));
+    }
+
+    if (action === 'edit-app') {
+      e.stopPropagation();
+      const appId = el.dataset.appId;
+      const app   = state.apps.find(a => a.id === appId);
+      if (!app) return;
+      document.getElementById('editAppId').value   = app.id;
+      document.getElementById('editAppName').value = app.name;
+      document.getElementById('editAppUrl').value  = app.url;
+      document.getElementById('editAppPort').value = app.port || '';
+      populateCategorySelect('editAppCategory', app.category_id);
+      openModal('modalEditApp');
     }
 
     if (action === 'delete-category') {
       const catId = el.dataset.catId;
       const cat   = state.categories.find(c => c.id === catId);
       if (!cat) return;
-      const n = state.apps.filter(a => a.categoryId === catId).length;
+      const n   = state.apps.filter(a => a.category_id === catId).length;
       const msg = n > 0
         ? `Supprimer "${cat.name}" ? Les ${n} application${n > 1 ? 's' : ''} seront déplacées dans "Non classé".`
         : `Supprimer la catégorie "${cat.name}" ?`;
@@ -588,21 +637,18 @@ document.addEventListener('DOMContentLoaded', () => {
 
     if (action === 'add-app-to-cat') {
       const catId = el.dataset.catId;
-      populateCategorySelect();
-      const select = document.getElementById('appCategory');
-      if (select) select.value = catId;
+      populateCategorySelect('appCategory', catId);
       openModal('modalAddApp');
     }
   });
 
-  // ── Keyboard: Enter/Space on app card opens the link ────────
+  // ── Keyboard: Enter/Space on focused card opens the link ─────
   document.addEventListener('keydown', e => {
     if (e.key !== 'Enter' && e.key !== ' ') return;
     const card = e.target.closest('.app-card');
     if (!card || e.target !== card) return;
     e.preventDefault();
-    const link = card.querySelector('.app-card-link');
-    if (link) link.click();
+    card.querySelector('.app-card-link')?.click();
   });
 
 });
