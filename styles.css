@@ -390,7 +390,57 @@ a {
   backdrop-filter: var(--blur-sm);
   -webkit-backdrop-filter: var(--blur-sm);
   overflow: hidden;
-  transition: border-color var(--t-med);
+  transition: border-color var(--t-med), opacity var(--t-med), transform var(--t-med);
+}
+
+/* Dragging state for a category section */
+.category-section.cat-dragging {
+  opacity: 0.45;
+  transform: scale(0.985);
+}
+
+/* Drag handle visible in the category header */
+.cat-drag-handle {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--text-3);
+  flex-shrink: 0;
+  cursor: grab;
+  border-radius: var(--r-sm);
+  transition: color var(--t-fast), background var(--t-fast);
+}
+
+.cat-drag-handle:hover {
+  color: var(--text-2);
+  background: var(--surface-3);
+}
+
+.cat-drag-handle svg {
+  width: 14px;
+  height: 14px;
+}
+
+.category-section.cat-draggable .category-header {
+  cursor: grab;
+}
+
+.category-section.cat-draggable .category-header:active {
+  cursor: grabbing;
+}
+
+/* Horizontal drop indicator shown between category sections */
+.cat-drop-indicator {
+  height: 3px;
+  width: 100%;
+  flex-shrink: 0;
+  background: var(--accent);
+  border-radius: 2px;
+  box-shadow: 0 0 10px var(--accent), 0 0 24px color-mix(in srgb, var(--accent) 40%, transparent);
+  pointer-events: none;
+  animation: indicatorPulse 0.7s ease-in-out infinite alternate;
 }
 
 .category-header {

@@ -508,9 +508,18 @@ function buildAppCardHTML(app) {
 // DRAG & DROP
 // ================================================================
 
+// ── App card drag state ─────────────────────────────────────────
 let _draggedAppId   = null;
-let _dropTargetCard = null;  // DOM card nearest to cursor during drag
-let _dropBefore     = true;  // insert before (true) or after (false) _dropTargetCard
+let _dropTargetCard = null;
+let _dropBefore     = true;
+
+// ── Category drag state ─────────────────────────────────────────
+let _draggedCatId         = null;
+let _dropTargetSection    = null;
+let _dropSectionBefore    = true;
+let _catContainerListened = false;
+
+// ── App-card position helper ────────────────────────────────────
 
 /** Find the card nearest to the cursor and whether to insert before/after it */
 function getDropPosition(zone, e) {
@@ -549,19 +558,76 @@ function removeDropIndicator() {
   document.getElementById('dropIndicator')?.remove();
 }
 
+// ── Category position helper ────────────────────────────────────
+
+function getCatDropPosition(container, e) {
+  const sections = [...container.querySelectorAll('.category-section:not(.cat-dragging)')];
+  if (!sections.length) return { section: null, before: false };
+
+  let best     = null;
+  let bestDist = Infinity;
+
+  for (const sec of sections) {
+    const rect = sec.getBoundingClientRect();
+    const cy   = rect.top + rect.height / 2;
+    const dist = Math.abs(e.clientY - cy);
+    if (dist < bestDist) { bestDist = dist; best = sec; }
+  }
+
+  if (!best) return { section: null, before: false };
+  const rect = best.getBoundingClientRect();
+  return { section: best, before: e.clientY < rect.top + rect.height / 2 };
+}
+
+function showCatDropIndicator(container, section, before) {
+  removeCatDropIndicator();
+  const el = document.createElement('div');
+  el.className = 'cat-drop-indicator';
+  el.id = 'catDropIndicator';
+  if (section) {
+    container.insertBefore(el, before ? section : section.nextSibling);
+  } else {
+    container.appendChild(el);
+  }
+}
+
+function removeCatDropIndicator() {
+  document.getElementById('catDropIndicator')?.remove();
+}
+
+// ── Attach all listeners (called after every renderAll) ─────────
+
 function attachDragListeners() {
+  // App cards — dragstart / dragend
   document.querySelectorAll('.app-card[draggable]').forEach(card => {
     card.addEventListener('dragstart', onCardDragStart);
     card.addEventListener('dragend',   onCardDragEnd);
   });
+  // Drop zones — dragover / dragleave / drop
   document.querySelectorAll('.drop-zone').forEach(zone => {
     zone.addEventListener('dragover',  onZoneDragOver);
     zone.addEventListener('dragleave', onZoneDragLeave);
     zone.addEventListener('drop',      onZoneDrop);
   });
+  // Category sections — dragstart / dragend
+  document.querySelectorAll('.category-section[draggable]').forEach(section => {
+    section.addEventListener('dragstart', onCatDragStart);
+    section.addEventListener('dragend',   onCatDragEnd);
+  });
+  // Container: attach only once (the element is never replaced, only its innerHTML is)
+  if (!_catContainerListened) {
+    const container = document.getElementById('categoriesContainer');
+    container.addEventListener('dragover',  onContainerCatDragOver);
+    container.addEventListener('dragleave', onContainerCatDragLeave);
+    container.addEventListener('drop',      onContainerCatDrop);
+    _catContainerListened = true;
+  }
 }
 
+// ── App card handlers ───────────────────────────────────────────
+
 function onCardDragStart(e) {
+  if (_draggedCatId) return;
   _draggedAppId = this.dataset.appId;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', _draggedAppId);
@@ -582,6 +648,7 @@ function onCardDragEnd() {
 }
 
 function onZoneDragOver(e) {
+  if (_draggedCatId) return; // suppress when dragging a category
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   this.classList.add('drag-over');
@@ -603,6 +670,7 @@ function onZoneDragLeave(e) {
 }
 
 function onZoneDrop(e) {
+  if (_draggedCatId) return; // suppress when dragging a category
   e.preventDefault();
   this.classList.remove('drag-over', 'droppable');
   removeDropIndicator();
@@ -611,13 +679,12 @@ function onZoneDrop(e) {
   const catId = this.dataset.categoryId;
   if (!appId || !catId) return;
 
-  let beforeAppId = null; // null = append at end
+  let beforeAppId = null;
   if (_dropTargetCard) {
     const targetId = _dropTargetCard.dataset.appId;
     if (_dropBefore) {
       beforeAppId = targetId;
     } else {
-      // insert after targetId → find next sibling card (excluding dragged)
       const cards = [...this.querySelectorAll('.app-card:not(.dragging)')];
       const idx   = cards.findIndex(c => c.dataset.appId === targetId);
       const next  = cards[idx + 1];
@@ -628,6 +695,75 @@ function onZoneDrop(e) {
   _dropTargetCard = null;
   _dropBefore     = true;
   relocateApp(appId, catId, beforeAppId);
+}
+
+// ── Category section handlers ───────────────────────────────────
+
+function onCatDragStart(e) {
+  if (_draggedAppId) return;
+  _draggedCatId = this.dataset.catId;
+  e.dataTransfer.effectAllowed = 'move';
+  e.dataTransfer.setData('text/plain', _draggedCatId);
+  e.stopPropagation();
+  requestAnimationFrame(() => this.classList.add('cat-dragging'));
+}
+
+function onCatDragEnd() {
+  this.classList.remove('cat-dragging');
+  _draggedCatId      = null;
+  _dropTargetSection = null;
+  removeCatDropIndicator();
+}
+
+function onContainerCatDragOver(e) {
+  if (!_draggedCatId) return;
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+
+  const container = document.getElementById('categoriesContainer');
+  const { section, before } = getCatDropPosition(container, e);
+
+  if (section !== _dropTargetSection || before !== _dropSectionBefore) {
+    _dropTargetSection = section;
+    _dropSectionBefore = before;
+    showCatDropIndicator(container, section, before);
+  }
+}
+
+function onContainerCatDragLeave(e) {
+  if (!_draggedCatId) return;
+  const container = document.getElementById('categoriesContainer');
+  if (!container.contains(e.relatedTarget)) {
+    removeCatDropIndicator();
+    _dropTargetSection = null;
+  }
+}
+
+function onContainerCatDrop(e) {
+  if (!_draggedCatId) return;
+  e.preventDefault();
+  removeCatDropIndicator();
+
+  const catId = _draggedCatId;
+  let beforeCatId = null;
+
+  if (_dropTargetSection) {
+    const targetId = _dropTargetSection.dataset.categoryId;
+    if (_dropSectionBefore) {
+      beforeCatId = targetId;
+    } else {
+      const container = document.getElementById('categoriesContainer');
+      const sections  = [...container.querySelectorAll('.category-section:not(.cat-dragging)')];
+      const idx       = sections.findIndex(s => s.dataset.categoryId === targetId);
+      const next      = sections[idx + 1];
+      beforeCatId = next ? next.dataset.categoryId : null;
+    }
+  }
+
+  _draggedCatId      = null;
+  _dropTargetSection = null;
+  _dropSectionBefore = true;
+  reorderCategories(catId, beforeCatId);
 }
 
 
