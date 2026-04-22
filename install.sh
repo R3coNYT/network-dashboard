@@ -186,6 +186,8 @@ server {
     ssl_session_cache   shared:SSL:10m;
     ssl_session_timeout 1d;
 
+    client_max_body_size 6m;
+
     # Security headers
     add_header X-Frame-Options        "SAMEORIGIN"           always;
     add_header X-Content-Type-Options "nosniff"              always;
@@ -229,6 +231,14 @@ server {
         proxy_set_header   X-Forwarded-Proto \$scheme;
         proxy_read_timeout    30s;
         proxy_connect_timeout  5s;
+        client_max_body_size  6m;
+    }
+
+    # ── Uploaded images ──────────────────────────────────────────
+    location /uploads/ {
+        alias ${APP_DIR}/uploads/;
+        add_header Cache-Control "public, max-age=86400";
+        add_header X-Content-Type-Options "nosniff" always;
     }
 
     # ── Block sensitive files ─────────────────────────────────────

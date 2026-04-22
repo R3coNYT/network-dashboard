@@ -774,6 +774,51 @@ a {
   border: 1px solid var(--border);
 }
 
+/* Upload status indicator */
+.upload-status {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 28px;
+  height: 28px;
+}
+
+@keyframes spinnerRing {
+  to { transform: rotate(360deg); }
+}
+
+.upload-spinner {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spinnerRing 0.7s linear infinite;
+  flex-shrink: 0;
+}
+
+.upload-check {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+}
+
+.upload-check svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* Disabled submit button while uploading */
+.btn[disabled],
+.btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 /* External link icon on hover */
 .app-card-open-icon {
   opacity: 0;

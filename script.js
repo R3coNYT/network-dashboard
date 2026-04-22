@@ -128,6 +128,45 @@ function updateImageThumb(thumbId, src) {
   }
 }
 
+/**
+ * prefix: 'app' | 'editApp'
+ * state:  'idle' | 'uploading' | 'done' | 'error'
+ */
+function setUploadState(prefix, state) {
+  const statusEl  = document.getElementById(`${prefix}UploadStatus`);
+  const formId    = prefix === 'app' ? 'formAddApp' : 'formEditApp';
+  const form      = document.getElementById(formId);
+  const submitBtn = form ? form.querySelector('[type="submit"]') : null;
+  if (!statusEl) return;
+
+  if (state === 'idle') {
+    statusEl.innerHTML = '';
+    statusEl.hidden    = true;
+    if (submitBtn) submitBtn.disabled = false;
+
+  } else if (state === 'uploading') {
+    statusEl.innerHTML = '<span class="upload-spinner" aria-label="Upload en cours…"></span>';
+    statusEl.hidden    = false;
+    if (submitBtn) submitBtn.disabled = true;
+
+  } else if (state === 'done') {
+    statusEl.innerHTML = `
+      <span class="upload-check" aria-label="Upload terminé">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+             stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+      </span>`;
+    statusEl.hidden    = false;
+    if (submitBtn) submitBtn.disabled = false;
+
+  } else if (state === 'error') {
+    statusEl.innerHTML = '';
+    statusEl.hidden    = true;
+    if (submitBtn) submitBtn.disabled = false;
+  }
+}
+
 // ================================================================
 // TOAST NOTIFICATIONS
 // ================================================================
@@ -176,6 +215,9 @@ function closeModal(id) {
   if (form) form.reset();
   // Reset image thumbs
   overlay.querySelectorAll('.image-thumb').forEach(t => { t.src = ''; t.hidden = true; });
+  // Reset upload status + re-enable submit
+  overlay.querySelectorAll('.upload-status').forEach(s => { s.innerHTML = ''; s.hidden = true; });
+  overlay.querySelectorAll('[type="submit"]').forEach(b => { b.disabled = false; });
   // Reset color picker to first swatch
   resetColorPicker();
 }
@@ -864,25 +906,20 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
 
   // ── Forms ────────────────────────────────────────────────────
-  document.getElementById('formAddApp').addEventListener('submit', async e => {
+  document.getElementById('formAddApp').addEventListener('submit', e => {
     e.preventDefault();
     const name        = document.getElementById('appName').value.trim();
     const url         = document.getElementById('appUrl').value.trim();
     const port        = document.getElementById('appPort').value.trim();
     const catId       = document.getElementById('appCategory').value;
     const description = document.getElementById('appDescription').value.trim();
-    const fileInput   = document.getElementById('appImageFile');
-    let   imageUrl    = document.getElementById('appImageUrl').value.trim();
+    const imageUrl    = document.getElementById('appImageUrl').value.trim();
     if (!name || !url) return;
-    if (fileInput.files && fileInput.files[0]) {
-      try { imageUrl = await uploadImageFile(fileInput.files[0]); }
-      catch (err) { showToast(err.message, 'error'); return; }
-    }
     closeModal('modalAddApp');
     addApp({ name, url, port: port || null, categoryId: catId, description, imageUrl });
   });
 
-  document.getElementById('formEditApp').addEventListener('submit', async e => {
+  document.getElementById('formEditApp').addEventListener('submit', e => {
     e.preventDefault();
     const id          = document.getElementById('editAppId').value;
     const name        = document.getElementById('editAppName').value.trim();
@@ -890,13 +927,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     const port        = document.getElementById('editAppPort').value.trim();
     const catId       = document.getElementById('editAppCategory').value;
     const description = document.getElementById('editAppDescription').value.trim();
-    const fileInput   = document.getElementById('editAppImageFile');
-    let   imageUrl    = document.getElementById('editAppImageUrl').value.trim();
+    const imageUrl    = document.getElementById('editAppImageUrl').value.trim();
     if (!id || !name || !url) return;
-    if (fileInput.files && fileInput.files[0]) {
-      try { imageUrl = await uploadImageFile(fileInput.files[0]); }
-      catch (err) { showToast(err.message, 'error'); return; }
-    }
     closeModal('modalEditApp');
     updateApp(id, { name, url, port: port || null, categoryId: catId, description, imageUrl });
   });
@@ -1028,29 +1060,55 @@ document.addEventListener('DOMContentLoaded', async () => {
     card.querySelector('.app-card-link')?.click();
   });
 
-  // ── Image inputs: file preview + URL live preview ─────────────
-  document.getElementById('appImageFile').addEventListener('change', e => {
+  // ── Image inputs: file upload on select + URL live preview ──────
+  document.getElementById('appImageFile').addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
     document.getElementById('appImageUrl').value = '';
+    // Local preview while uploading
     const reader = new FileReader();
     reader.onload = ev => updateImageThumb('appImageThumb', ev.target.result);
     reader.readAsDataURL(file);
+    // Upload immediately
+    setUploadState('app', 'uploading');
+    try {
+      const url = await uploadImageFile(file);
+      document.getElementById('appImageUrl').value = url;
+      setUploadState('app', 'done');
+    } catch (err) {
+      setUploadState('app', 'error');
+      updateImageThumb('appImageThumb', '');
+      e.target.value = '';
+      showToast(err.message, 'error');
+    }
   });
   document.getElementById('appImageUrl').addEventListener('input', e => {
     updateImageThumb('appImageThumb', e.target.value.trim());
+    setUploadState('app', 'idle');
   });
 
-  document.getElementById('editAppImageFile').addEventListener('change', e => {
+  document.getElementById('editAppImageFile').addEventListener('change', async e => {
     const file = e.target.files[0];
     if (!file) return;
     document.getElementById('editAppImageUrl').value = '';
     const reader = new FileReader();
     reader.onload = ev => updateImageThumb('editAppImageThumb', ev.target.result);
     reader.readAsDataURL(file);
+    setUploadState('editApp', 'uploading');
+    try {
+      const url = await uploadImageFile(file);
+      document.getElementById('editAppImageUrl').value = url;
+      setUploadState('editApp', 'done');
+    } catch (err) {
+      setUploadState('editApp', 'error');
+      updateImageThumb('editAppImageThumb', '');
+      e.target.value = '';
+      showToast(err.message, 'error');
+    }
   });
   document.getElementById('editAppImageUrl').addEventListener('input', e => {
     updateImageThumb('editAppImageThumb', e.target.value.trim());
+    setUploadState('editApp', 'idle');
   });
 
 });
