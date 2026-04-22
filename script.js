@@ -237,20 +237,55 @@ async function deleteCategory(id) {
   } catch (err) { showToast(err.message, 'error'); }
 }
 
-async function moveApp(appId, targetCatId) {
-  const app = state.apps.find(a => a.id === appId);
-  if (!app || app.category_id === targetCatId) return;
-  const prev = app.category_id;
-  app.category_id = targetCatId; // optimistic update
+async function relocateApp(appId, targetCatId, beforeAppId) {
+  // beforeAppId — insert the card before this app ID (null = append at end)
+  const appRef = state.apps.find(a => a.id === appId);
+  if (!appRef) return;
+  const prevCatId = appRef.category_id;
+  const isMove    = prevCatId !== targetCatId;
+
+  // Build new ordered list for target category (without the moving app)
+  const targetApps = state.apps
+    .filter(a => a.category_id === targetCatId && a.id !== appId)
+    .slice();
+
+  if (beforeAppId === null) {
+    targetApps.push(appRef);
+  } else {
+    const idx = targetApps.findIndex(a => a.id === beforeAppId);
+    targetApps.splice(idx === -1 ? targetApps.length : idx, 0, appRef);
+  }
+
+  // Assign new sort_orders directly on state objects for target category
+  const reorderPayload = [];
+  targetApps.forEach((a, i) => {
+    a.sort_order  = i;
+    a.category_id = targetCatId;
+    reorderPayload.push({ id: a.id, sort_order: i, category_id: targetCatId });
+  });
+
+  // If cross-category: reindex source category too
+  if (isMove) {
+    state.apps
+      .filter(a => a.category_id === prevCatId) // appRef.category_id already changed above
+      .forEach((a, i) => {
+        a.sort_order = i;
+        reorderPayload.push({ id: a.id, sort_order: i, category_id: prevCatId });
+      });
+  }
+
+  // Sort state.apps by sort_order so filter-based rendering preserves the right order
+  state.apps.sort((a, b) => (a.sort_order ?? 0) - (b.sort_order ?? 0));
   renderAll();
+
   try {
-    const updated = await api.put(`/api/apps/${appId}`, { category_id: targetCatId });
-    const idx = state.apps.findIndex(a => a.id === appId);
-    if (idx !== -1) state.apps[idx] = updated;
-    const cat = state.categories.find(c => c.id === targetCatId);
-    showToast(`"${app.name}" déplacé vers "${cat?.name || 'la catégorie'}"`);
+    await api.put('/api/apps/reorder', reorderPayload);
+    if (isMove) {
+      const cat = state.categories.find(c => c.id === targetCatId);
+      showToast(`"${appRef.name}" déplacé vers "${cat?.name || 'la catégorie'}"`);
+    }
   } catch (err) {
-    app.category_id = prev; // rollback
+    await loadData();
     renderAll();
     showToast(err.message, 'error');
   }
@@ -436,16 +471,52 @@ function buildAppCardHTML(app) {
 // DRAG & DROP
 // ================================================================
 
-let _draggedAppId = null;
+let _draggedAppId   = null;
+let _dropTargetCard = null;  // DOM card nearest to cursor during drag
+let _dropBefore     = true;  // insert before (true) or after (false) _dropTargetCard
+
+/** Find the card nearest to the cursor and whether to insert before/after it */
+function getDropPosition(zone, e) {
+  const cards = [...zone.querySelectorAll('.app-card:not(.dragging)')];
+  if (!cards.length) return { card: null, before: false };
+
+  let bestCard = null;
+  let bestDist = Infinity;
+
+  for (const card of cards) {
+    const rect = card.getBoundingClientRect();
+    const cx   = rect.left + rect.width  / 2;
+    const cy   = rect.top  + rect.height / 2;
+    const dist = Math.hypot(e.clientX - cx, e.clientY - cy);
+    if (dist < bestDist) { bestDist = dist; bestCard = card; }
+  }
+
+  if (!bestCard) return { card: null, before: false };
+  const rect = bestCard.getBoundingClientRect();
+  return { card: bestCard, before: e.clientX < rect.left + rect.width / 2 };
+}
+
+function showDropIndicator(zone, card, before) {
+  removeDropIndicator();
+  const el = document.createElement('div');
+  el.className = 'drop-indicator';
+  el.id = 'dropIndicator';
+  if (card) {
+    card.parentNode.insertBefore(el, before ? card : card.nextSibling);
+  } else {
+    zone.appendChild(el);
+  }
+}
+
+function removeDropIndicator() {
+  document.getElementById('dropIndicator')?.remove();
+}
 
 function attachDragListeners() {
-  // App cards — dragstart / dragend
   document.querySelectorAll('.app-card[draggable]').forEach(card => {
     card.addEventListener('dragstart', onCardDragStart);
     card.addEventListener('dragend',   onCardDragEnd);
   });
-
-  // Drop zones — dragover / dragleave / drop
   document.querySelectorAll('.drop-zone').forEach(zone => {
     zone.addEventListener('dragover',  onZoneDragOver);
     zone.addEventListener('dragleave', onZoneDragLeave);
@@ -457,8 +528,6 @@ function onCardDragStart(e) {
   _draggedAppId = this.dataset.appId;
   e.dataTransfer.effectAllowed = 'move';
   e.dataTransfer.setData('text/plain', _draggedAppId);
-
-  // Defer class addition so the browser snapshots the un-dimmed card
   requestAnimationFrame(() => {
     this.classList.add('dragging');
     document.querySelectorAll('.drop-zone').forEach(z => z.classList.add('droppable'));
@@ -467,7 +536,9 @@ function onCardDragStart(e) {
 
 function onCardDragEnd() {
   this.classList.remove('dragging');
-  _draggedAppId = null;
+  _draggedAppId   = null;
+  _dropTargetCard = null;
+  removeDropIndicator();
   document.querySelectorAll('.drop-zone').forEach(z => {
     z.classList.remove('droppable', 'drag-over');
   });
@@ -477,25 +548,51 @@ function onZoneDragOver(e) {
   e.preventDefault();
   e.dataTransfer.dropEffect = 'move';
   this.classList.add('drag-over');
+
+  const { card, before } = getDropPosition(this, e);
+  if (card !== _dropTargetCard || before !== _dropBefore) {
+    _dropTargetCard = card;
+    _dropBefore     = before;
+    showDropIndicator(this, card, before);
+  }
 }
 
 function onZoneDragLeave(e) {
-  // Only remove the class when truly leaving the zone (not entering a child)
   if (!this.contains(e.relatedTarget)) {
     this.classList.remove('drag-over');
+    removeDropIndicator();
+    _dropTargetCard = null;
   }
 }
 
 function onZoneDrop(e) {
   e.preventDefault();
   this.classList.remove('drag-over', 'droppable');
+  removeDropIndicator();
 
   const appId = _draggedAppId || e.dataTransfer.getData('text/plain');
-  const catId  = this.dataset.categoryId;
+  const catId = this.dataset.categoryId;
   if (!appId || !catId) return;
 
-  moveApp(appId, catId);
+  let beforeAppId = null; // null = append at end
+  if (_dropTargetCard) {
+    const targetId = _dropTargetCard.dataset.appId;
+    if (_dropBefore) {
+      beforeAppId = targetId;
+    } else {
+      // insert after targetId → find next sibling card (excluding dragged)
+      const cards = [...this.querySelectorAll('.app-card:not(.dragging)')];
+      const idx   = cards.findIndex(c => c.dataset.appId === targetId);
+      const next  = cards[idx + 1];
+      beforeAppId = next ? next.dataset.appId : null;
+    }
+  }
+
+  _dropTargetCard = null;
+  _dropBefore     = true;
+  relocateApp(appId, catId, beforeAppId);
 }
+
 
 // ================================================================
 // EVENT WIRING

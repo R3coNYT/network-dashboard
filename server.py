@@ -43,6 +43,7 @@ def init_db():
                 url         TEXT NOT NULL,
                 port        TEXT,
                 category_id TEXT NOT NULL DEFAULT 'uncategorized',
+                sort_order  INTEGER NOT NULL DEFAULT 0,
                 created_at  TEXT NOT NULL DEFAULT (datetime('now')),
                 FOREIGN KEY (category_id) REFERENCES categories(id) ON UPDATE CASCADE
             );
@@ -51,6 +52,12 @@ def init_db():
             VALUES ('uncategorized', 'Non classé', '#64748b', 1, 0);
         ''')
         conn.commit()
+        # Migration: add sort_order to existing apps tables
+        try:
+            conn.execute('ALTER TABLE apps ADD COLUMN sort_order INTEGER NOT NULL DEFAULT 0')
+            conn.commit()
+        except sqlite3.OperationalError:
+            pass  # column already exists
     log.info('Database ready at %s', DB_PATH)
 
 
@@ -113,7 +120,7 @@ def api_delete_category(cat_id):
 @app.route('/api/apps', methods=['GET'])
 def api_get_apps():
     with get_db() as conn:
-        rows = conn.execute('SELECT * FROM apps ORDER BY created_at').fetchall()
+        rows = conn.execute('SELECT * FROM apps ORDER BY sort_order, created_at').fetchall()
     return jsonify([row_to_dict(r) for r in rows])
 
 
@@ -130,9 +137,13 @@ def api_create_app():
     with get_db() as conn:
         if not conn.execute('SELECT 1 FROM categories WHERE id = ?', (cat_id,)).fetchone():
             cat_id = 'uncategorized'
+        max_order = conn.execute(
+            'SELECT COALESCE(MAX(sort_order), -1) FROM apps WHERE category_id = ?', (cat_id,)
+        ).fetchone()[0]
+        sort_order = max_order + 1
         conn.execute(
-            'INSERT INTO apps (id, name, url, port, category_id) VALUES (?, ?, ?, ?, ?)',
-            (app_id, name, url, port, cat_id)
+            'INSERT INTO apps (id, name, url, port, category_id, sort_order) VALUES (?, ?, ?, ?, ?, ?)',
+            (app_id, name, url, port, cat_id, sort_order)
         )
         conn.commit()
         row = conn.execute('SELECT * FROM apps WHERE id = ?', (app_id,)).fetchone()
@@ -159,6 +170,34 @@ def api_update_app(app_id):
         conn.commit()
         row = conn.execute('SELECT * FROM apps WHERE id = ?', (app_id,)).fetchone()
     return jsonify(row_to_dict(row))
+
+
+@app.route('/api/apps/reorder', methods=['PUT'])
+def api_reorder_apps():
+    items = request.get_json(silent=True)
+    if not isinstance(items, list):
+        return jsonify({'error': 'Expected a list of {id, sort_order, category_id}'}), 400
+    with get_db() as conn:
+        for item in items:
+            app_id     = item.get('id')
+            sort_order = item.get('sort_order', 0)
+            cat_id     = item.get('category_id')
+            if not app_id:
+                continue
+            if cat_id:
+                if not conn.execute('SELECT 1 FROM categories WHERE id=?', (cat_id,)).fetchone():
+                    cat_id = 'uncategorized'
+                conn.execute(
+                    'UPDATE apps SET sort_order=?, category_id=? WHERE id=?',
+                    (sort_order, cat_id, app_id)
+                )
+            else:
+                conn.execute(
+                    'UPDATE apps SET sort_order=? WHERE id=?',
+                    (sort_order, app_id)
+                )
+        conn.commit()
+    return jsonify({'ok': True})
 
 
 @app.route('/api/apps/<app_id>', methods=['DELETE'])
