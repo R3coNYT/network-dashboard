@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>NetDashboard</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>⚡</text></svg>">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- Background decorative orbs -->
+  <div class="bg-orb bg-orb-1" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-2" aria-hidden="true"></div>
+  <div class="bg-orb bg-orb-3" aria-hidden="true"></div>
+
+  <!-- Header -->
+  <header class="header">
+    <div class="header-inner">
+      <div class="header-brand">
+        <div class="brand-icon" aria-hidden="true">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="3" width="7" height="7" rx="1"/>
+            <rect x="14" y="3" width="7" height="7" rx="1"/>
+            <rect x="3" y="14" width="7" height="7" rx="1"/>
+            <rect x="14" y="14" width="7" height="7" rx="1"/>
+          </svg>
+        </div>
+        <div class="brand-text">
+          <h1 class="brand-name">NetDashboard</h1>
+          <p class="brand-sub">Centralisez vos services</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="btn btn-ghost" id="btnAddCategory" aria-label="Créer une catégorie">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/>
+            <line x1="12" y1="11" x2="12" y2="17"/>
+            <line x1="9" y1="14" x2="15" y2="14"/>
+          </svg>
+          <span>Catégorie</span>
+        </button>
+        <button class="btn btn-primary" id="btnAddApp" aria-label="Ajouter une application">
+          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+            <line x1="12" y1="5" x2="12" y2="19"/>
+            <line x1="5" y1="12" x2="19" y2="12"/>
+          </svg>
+          <span>Application</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- Main content -->
+  <main class="main" id="main">
+    <div class="categories-container" id="categoriesContainer">
+      <!-- Rendered by JS -->
+    </div>
+  </main>
+
+  <!-- ===== MODAL: Add App ===== -->
+  <div class="modal-overlay" id="modalAddApp" role="dialog" aria-modal="true" aria-labelledby="titleAddApp">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="titleAddApp">Ajouter une application</h2>
+        <button class="modal-close" data-close="modalAddApp" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddApp" class="modal-form" novalidate>
+        <div class="form-group">
+          <label for="appName">Nom de l'application <span class="required">*</span></label>
+          <input type="text" id="appName" placeholder="ex : Proxmox, Portainer, Grafana…" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label for="appUrl">Adresse (URL ou IP) <span class="required">*</span></label>
+          <input type="text" id="appUrl" placeholder="ex : 192.168.1.100 ou https://app.example.com" autocomplete="off" required>
+        </div>
+        <div class="form-row">
+          <div class="form-group">
+            <label for="appPort">Port <span class="optional">(optionnel)</span></label>
+            <input type="number" id="appPort" placeholder="8006" min="1" max="65535" autocomplete="off">
+          </div>
+          <div class="form-group">
+            <label for="appCategory">Catégorie</label>
+            <select id="appCategory">
+              <!-- populated by JS -->
+            </select>
+          </div>
+        </div>
+        <div class="form-footer">
+          <button type="button" class="btn btn-ghost" data-close="modalAddApp">Annuler</button>
+          <button type="submit" class="btn btn-primary">Ajouter</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Add Category ===== -->
+  <div class="modal-overlay" id="modalAddCategory" role="dialog" aria-modal="true" aria-labelledby="titleAddCat">
+    <div class="modal">
+      <div class="modal-header">
+        <h2 class="modal-title" id="titleAddCat">Nouvelle catégorie</h2>
+        <button class="modal-close" data-close="modalAddCategory" aria-label="Fermer">&times;</button>
+      </div>
+      <form id="formAddCategory" class="modal-form" novalidate>
+        <div class="form-group">
+          <label for="categoryName">Nom de la catégorie <span class="required">*</span></label>
+          <input type="text" id="categoryName" placeholder="ex : Infrastructure, Monitoring, Médias…" autocomplete="off" required>
+        </div>
+        <div class="form-group">
+          <label>Couleur d'accent</label>
+          <div class="color-picker" id="colorPicker" role="radiogroup" aria-label="Choisir une couleur">
+            <button type="button" class="color-swatch selected" data-color="#6366f1" style="background:#6366f1" title="Indigo" aria-label="Indigo" aria-pressed="true"></button>
+            <button type="button" class="color-swatch" data-color="#8b5cf6" style="background:#8b5cf6" title="Violet" aria-label="Violet" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#06b6d4" style="background:#06b6d4" title="Cyan" aria-label="Cyan" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#10b981" style="background:#10b981" title="Vert" aria-label="Vert" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#f59e0b" style="background:#f59e0b" title="Ambre" aria-label="Ambre" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#ef4444" style="background:#ef4444" title="Rouge" aria-label="Rouge" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#ec4899" style="background:#ec4899" title="Rose" aria-label="Rose" aria-pressed="false"></button>
+            <button type="button" class="color-swatch" data-color="#0ea5e9" style="background:#0ea5e9" title="Bleu ciel" aria-label="Bleu ciel" aria-pressed="false"></button>
+          </div>
+        </div>
+        <div class="form-footer">
+          <button type="button" class="btn btn-ghost" data-close="modalAddCategory">Annuler</button>
+          <button type="submit" class="btn btn-primary">Créer</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ===== MODAL: Confirm ===== -->
+  <div class="modal-overlay" id="modalConfirm" role="dialog" aria-modal="true" aria-labelledby="titleConfirm">
+    <div class="modal modal-sm">
+      <div class="modal-header">
+        <h2 class="modal-title" id="titleConfirm">Confirmer la suppression</h2>
+      </div>
+      <p class="modal-message" id="confirmMessage"></p>
+      <div class="form-footer">
+        <button class="btn btn-ghost" id="confirmCancel">Annuler</button>
+        <button class="btn btn-danger" id="confirmOk">Supprimer</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast container -->
+  <div class="toast-container" id="toastContainer" aria-live="polite" aria-atomic="false"></div>
+
+  <script src="script.js"></script>
+</body>
+</html>
