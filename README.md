@@ -59,6 +59,7 @@ network-dashboard/          ← dépôt Git (n'importe où)
 > Requiert : Linux (Debian/Ubuntu ou RHEL/CentOS/Fedora), exécution en **root**.
 
 ```bash
+cd /opt
 git clone https://github.com/R3coNYT/network-dashboard.git
 cd network-dashboard
 sudo bash install.sh
@@ -90,7 +91,7 @@ Accès HTTPS : https://<IP_DU_SERVEUR>
 ## Mise à jour
 
 ```bash
-cd network-dashboard
+cd /opt/network-dashboard
 git pull
 sudo bash update.sh
 ```
