@@ -291,9 +291,31 @@ async function relocateApp(appId, targetCatId, beforeAppId) {
   }
 }
 
-// ================================================================
-// RENDERING
-// ================================================================
+async function reorderCategories(catId, beforeCatId) {
+  const catRef = state.categories.find(c => c.id === catId);
+  if (!catRef) return;
+
+  // Rebuild ordered array (all categories, moving catRef to new position)
+  const others   = state.categories.filter(c => c.id !== catId);
+  const insertIdx = beforeCatId
+    ? others.findIndex(c => c.id === beforeCatId)
+    : others.length;
+  others.splice(insertIdx === -1 ? others.length : insertIdx, 0, catRef);
+
+  // Update sort_orders in state
+  const payload = others.map((c, i) => { c.sort_order = i; return { id: c.id, sort_order: i }; });
+  state.categories = others;
+  renderAll();
+
+  try {
+    await api.put('/api/categories/reorder', payload);
+  } catch (err) {
+    await loadData();
+    renderAll();
+    showToast(err.message, 'error');
+  }
+}
+
 
 function populateCategorySelect(selectId = 'appCategory', selectedId = null) {
   const el = document.getElementById(selectId);
@@ -354,6 +376,18 @@ function buildCategoryHTML(cat) {
       </svg>
     </button>` : '';
 
+  const gripHandle = !cat.is_protected ? `
+    <span class="cat-drag-handle" aria-hidden="true" title="Réorganiser la catégorie">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
+        <circle cx="9"  cy="5"  r="1.3" fill="currentColor"/>
+        <circle cx="15" cy="5"  r="1.3" fill="currentColor"/>
+        <circle cx="9"  cy="12" r="1.3" fill="currentColor"/>
+        <circle cx="15" cy="12" r="1.3" fill="currentColor"/>
+        <circle cx="9"  cy="19" r="1.3" fill="currentColor"/>
+        <circle cx="15" cy="19" r="1.3" fill="currentColor"/>
+      </svg>
+    </span>` : '';
+
   const appsHTML = isEmpty
     ? `<div class="drop-hint">
          <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -364,9 +398,12 @@ function buildCategoryHTML(cat) {
     : apps.map(buildAppCardHTML).join('');
 
   return `
-    <section class="category-section" data-category-id="${escapeHtml(cat.id)}">
+    <section class="category-section${cat.is_protected ? '' : ' cat-draggable'}"
+             data-category-id="${escapeHtml(cat.id)}"
+             ${cat.is_protected ? '' : `draggable="true" data-cat-id="${escapeHtml(cat.id)}"`}>
       <div class="category-header">
         <div class="category-title-group">
+          ${gripHandle}
           <span class="category-accent-dot"
                 style="background:${escapeHtml(cat.color)};box-shadow:0 0 8px ${escapeHtml(cat.color)}55;"
                 aria-hidden="true"></span>

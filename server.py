@@ -88,13 +88,35 @@ def api_create_category():
     cat_id = new_id('cat')
     color  = data.get('color', '#6366f1')
     with get_db() as conn:
+        max_order = conn.execute(
+            'SELECT COALESCE(MAX(sort_order), -1) FROM categories WHERE is_protected = 0'
+        ).fetchone()[0]
         conn.execute(
-            'INSERT INTO categories (id, name, color, is_protected) VALUES (?, ?, ?, 0)',
-            (cat_id, name, color)
+            'INSERT INTO categories (id, name, color, is_protected, sort_order) VALUES (?, ?, ?, 0, ?)',
+            (cat_id, name, color, max_order + 1)
         )
         conn.commit()
         row = conn.execute('SELECT * FROM categories WHERE id = ?', (cat_id,)).fetchone()
     return jsonify(row_to_dict(row)), 201
+
+
+@app.route('/api/categories/reorder', methods=['PUT'])
+def api_reorder_categories():
+    items = request.get_json(silent=True)
+    if not isinstance(items, list):
+        return jsonify({'error': 'Expected a list of {id, sort_order}'}), 400
+    with get_db() as conn:
+        for item in items:
+            cat_id     = item.get('id')
+            sort_order = item.get('sort_order', 0)
+            if not cat_id:
+                continue
+            conn.execute(
+                'UPDATE categories SET sort_order=? WHERE id=?',
+                (sort_order, cat_id)
+            )
+        conn.commit()
+    return jsonify({'ok': True})
 
 
 @app.route('/api/categories/<cat_id>', methods=['DELETE'])
