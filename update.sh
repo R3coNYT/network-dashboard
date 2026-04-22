@@ -31,6 +31,15 @@ warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 [[ ! -d "$APP_DIR" ]]  && { warn "${APP_DIR} introuvable — relancez install.sh."; exit 1; }
 [[ ! -d "$VENV_DIR" ]] && { warn "Virtualenv absent — relancez install.sh."; exit 1; }
 
+# ── Git pull ─────────────────────────────────────────────────────
+if [[ -d "${SOURCE_DIR}/.git" ]]; then
+    info "Pulling latest changes from Git..."
+    git -C "${SOURCE_DIR}" pull
+    success "Repository up to date"
+else
+    warn "No .git directory found in ${SOURCE_DIR} — skipping git pull."
+fi
+
 # ── Sync source → /opt/network-dashboard ─────────────────────────
 if command -v rsync &>/dev/null; then
     info "Synchronisation des fichiers vers ${APP_DIR}..."
