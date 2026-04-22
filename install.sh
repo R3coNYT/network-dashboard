@@ -14,7 +14,8 @@ if [[ $EUID -ne 0 ]]; then
 fi
 
 # ── Variables ─────────────────────────────────────────────────────
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="/opt/network-dashboard"
 APP_NAME="netdashboard"
 
 # Determine the user who called sudo (to run the service under)
@@ -28,7 +29,7 @@ NGINX_AVAIL="/etc/nginx/sites-available/${APP_NAME}"
 NGINX_ENABLED="/etc/nginx/sites-enabled/${APP_NAME}"
 SERVICE_FILE="/etc/systemd/system/${APP_NAME}.service"
 RENEW_SCRIPT="/usr/local/bin/${APP_NAME}-renew-cert.sh"
-VENV_DIR="${SCRIPT_DIR}/.venv"
+VENV_DIR="${APP_DIR}/.venv"
 LOG_DIR="/var/log/${APP_NAME}"
 CERT_DAYS=15   # Days before the self-signed cert expires
 
@@ -56,7 +57,8 @@ pkg_install() {
 }
 
 info "Gestionnaire de paquets : ${PM}"
-info "Répertoire de l'application : ${SCRIPT_DIR}"
+info "Répertoire source : ${SOURCE_DIR}"
+info "Répertoire d'installation : ${APP_DIR}"
 info "Utilisateur du service : ${SERVICE_USER}"
 echo ""
 
@@ -69,6 +71,14 @@ if ! command -v nginx &>/dev/null; then
 else
     success "nginx déjà présent : $(nginx -v 2>&1 | head -1)"
 fi
+
+# ── Copie des fichiers dans /opt/network-dashboard ───────────────
+info "Copie des fichiers vers ${APP_DIR}..."
+mkdir -p "$APP_DIR"
+rsync -a --exclude='.git' --exclude='.venv' --exclude='netdashboard.db' \
+    "${SOURCE_DIR}/" "${APP_DIR}/"
+chown -R "${SERVICE_USER}:${SERVICE_USER}" "$APP_DIR" 2>/dev/null || true
+success "Fichiers copiés dans ${APP_DIR}"
 
 # ── Python 3 + venv ───────────────────────────────────────────────
 if ! command -v python3 &>/dev/null; then
@@ -91,7 +101,7 @@ fi
 info "Création de l'environnement virtuel Python..."
 python3 -m venv "$VENV_DIR"
 "$VENV_DIR/bin/pip" install --quiet --upgrade pip
-"$VENV_DIR/bin/pip" install --quiet -r "${SCRIPT_DIR}/requirements.txt"
+"$VENV_DIR/bin/pip" install --quiet -r "${APP_DIR}/requirements.txt"
 success "Dépendances Python installées"
 
 # ── openssl ────────────────────────────────────────────────────────
@@ -183,7 +193,7 @@ server {
     add_header Referrer-Policy        "strict-origin-when-cross-origin" always;
     add_header Strict-Transport-Security "max-age=31536000; includeSubDomains" always;
 
-    root  ${SCRIPT_DIR};
+    root  ${APP_DIR};
     index index.html;
 
     # ── Static: HTML ──────────────────────────────────────────────
@@ -268,8 +278,8 @@ Wants=network-online.target
 [Service]
 Type=simple
 User=${SERVICE_USER}
-WorkingDirectory=${SCRIPT_DIR}
-ExecStart=${VENV_DIR}/bin/python ${SCRIPT_DIR}/server.py
+WorkingDirectory=${APP_DIR}
+ExecStart=${VENV_DIR}/bin/python ${APP_DIR}/server.py
 Restart=on-failure
 RestartSec=5
 StandardOutput=append:${LOG_DIR}/flask.log
@@ -375,10 +385,11 @@ echo -e "${BOLD}${GREEN}   NetDashboard installé avec succès !${NC}"
 echo -e "${BOLD}${GREEN}══════════════════════════════════════════════${NC}"
 echo ""
 SERVER_IP="$(hostname -I 2>/dev/null | awk '{print $1}' || echo '127.0.0.1')"
-echo -e "  Accès HTTPS  : ${BLUE}https://${SERVER_IP}${NC}"
-echo -e "  Logs Flask   : ${LOG_DIR}/flask.log"
-echo -e "  Logs nginx   : /var/log/nginx/${APP_NAME}_access.log"
-echo -e "  Certificat   : ${SSL_DIR}/cert.pem"
+echo -e "  Accès HTTPS      : ${BLUE}https://${SERVER_IP}${NC}"
+echo -e "  App installée    : ${APP_DIR}"
+echo -e "  Logs Flask       : ${LOG_DIR}/flask.log"
+echo -e "  Logs nginx       : /var/log/nginx/${APP_NAME}_access.log"
+echo -e "  Certificat       : ${SSL_DIR}/cert.pem"
 echo -e "  Renouvellement cert : 1er et 15 du mois à 03h00"
 echo ""
 echo -e "  ${YELLOW}Note : certificat auto-signé — votre navigateur affichera"

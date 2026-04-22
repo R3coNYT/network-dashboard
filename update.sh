@@ -11,9 +11,16 @@ if [[ $EUID -ne 0 ]]; then
     exit 1
 fi
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+APP_DIR="/opt/network-dashboard"
 APP_NAME="netdashboard"
-VENV_DIR="${SCRIPT_DIR}/.venv"
+VENV_DIR="${APP_DIR}/.venv"
+
+# Determine the service user
+SERVICE_USER="${SUDO_USER:-}"
+if [[ -z "$SERVICE_USER" || "$SERVICE_USER" == "root" ]]; then
+    SERVICE_USER="www-data"
+fi
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; NC='\033[0m'
 info()    { echo -e "${BLUE}[*]${NC} $*"; }
@@ -21,18 +28,26 @@ success() { echo -e "${GREEN}[✓]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 
 # ── Sanity checks ─────────────────────────────────────────────────
-[[ ! -f "${SCRIPT_DIR}/server.py" ]]      && warn "server.py introuvable — l'installation a peut-être échoué."
-[[ ! -d "$VENV_DIR" ]]                    && warn "Virtualenv absent — relancez install.sh."
+[[ ! -d "$APP_DIR" ]]  && { warn "${APP_DIR} introuvable — relancez install.sh."; exit 1; }
+[[ ! -d "$VENV_DIR" ]] && { warn "Virtualenv absent — relancez install.sh."; exit 1; }
 
-# ── Python dependencies ───────────────────────────────────────────
-if [[ -f "${SCRIPT_DIR}/requirements.txt" && -d "$VENV_DIR" ]]; then
-    info "Mise à jour des dépendances Python..."
-    "$VENV_DIR/bin/pip" install --quiet --upgrade -r "${SCRIPT_DIR}/requirements.txt"
-    success "Dépendances Python à jour"
+# ── Sync source → /opt/network-dashboard ─────────────────────────
+if command -v rsync &>/dev/null; then
+    info "Synchronisation des fichiers vers ${APP_DIR}..."
+    rsync -a --exclude='.git' --exclude='.venv' --exclude='netdashboard.db' \
+        "${SOURCE_DIR}/" "${APP_DIR}/"
+    chown -R "${SERVICE_USER}:${SERVICE_USER}" "$APP_DIR" 2>/dev/null || true
+    success "Fichiers synchronisés dans ${APP_DIR}"
+else
+    warn "rsync introuvable — copie manuelle requise vers ${APP_DIR}"
 fi
 
-# ── Static files: nothing to copy — nginx serves from SCRIPT_DIR directly ──
-info "Fichiers statiques (index.html, styles.css, script.js) en place dans : ${SCRIPT_DIR}"
+# ── Python dependencies ───────────────────────────────────────────
+if [[ -f "${APP_DIR}/requirements.txt" ]]; then
+    info "Mise à jour des dépendances Python..."
+    "$VENV_DIR/bin/pip" install --quiet --upgrade -r "${APP_DIR}/requirements.txt"
+    success "Dépendances Python à jour"
+fi
 
 # ── nginx ─────────────────────────────────────────────────────────
 info "Validation de la configuration nginx..."

@@ -33,14 +33,23 @@ Interface glassmorphism dark, drag & drop, persistance SQLite, servi par nginx e
 ## Structure
 
 ```
-network-dashboard/
-├── index.html          # Interface principale
-├── styles.css          # Design glassmorphism dark
-├── script.js           # Logique frontend + appels API
-├── server.py           # API REST Flask
-├── requirements.txt    # Dépendances Python
-├── install.sh          # Installation complète (root)
-└── update.sh           # Mise à jour (root)
+network-dashboard/          ← dépôt Git (n'importe où)
+├── index.html
+├── styles.css
+├── script.js
+├── server.py
+├── requirements.txt
+├── install.sh
+└── update.sh
+
+/opt/network-dashboard/     ← répertoire d'installation (copié par install.sh)
+├── index.html
+├── styles.css
+├── script.js
+├── server.py
+├── requirements.txt
+├── .venv/                  ← virtualenv Python
+└── netdashboard.db         ← base de données SQLite (créée au démarrage)
 ```
 
 ---
@@ -57,15 +66,16 @@ sudo bash install.sh
 
 `install.sh` effectue automatiquement :
 
-1. Installation de **nginx** (si absent)
-2. Installation de **Python 3** + virtualenv + dépendances
-3. Génération d'un **certificat SSL auto-signé** (RSA 4096, SAN localhost + IP)
-4. Configuration **nginx** :
+1. Copie de tous les fichiers dans **`/opt/network-dashboard/`**
+2. Installation de **nginx** (si absent)
+3. Installation de **Python 3** + virtualenv + dépendances
+4. Génération d'un **certificat SSL auto-signé** (RSA 4096, SAN localhost + IP)
+5. Configuration **nginx** :
    - Port 80 → redirection 301 HTTPS
-   - Port 443 → fichiers statiques servis directement + `/api/` proxifié vers Flask
+   - Port 443 → fichiers statiques servis depuis `/opt/network-dashboard/` + `/api/` proxifié vers Flask
    - Headers de sécurité (HSTS, X-Frame-Options, CSP…)
-5. Création d'un **service systemd** `netdashboard` (Flask, démarrage automatique)
-6. Tâche **cron** de renouvellement du certificat (1er et 15 de chaque mois à 03h00)
+6. Création d'un **service systemd** `netdashboard` (Flask, démarrage automatique)
+7. Tâche **cron** de renouvellement du certificat (1er et 15 de chaque mois à 03h00)
 
 À la fin du script, l'URL d'accès est affichée :
 
@@ -85,7 +95,7 @@ git pull
 sudo bash update.sh
 ```
 
-`update.sh` met à jour les dépendances Python, revalide la configuration nginx, recharge nginx et redémarre Flask.
+`update.sh` synchronise le dépôt vers `/opt/network-dashboard/` (via `rsync`), met à jour les dépendances Python, revalide la configuration nginx, recharge nginx et redémarre Flask.
 
 ---
 
