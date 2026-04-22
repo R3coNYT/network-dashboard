@@ -60,7 +60,7 @@ network-dashboard/          ← dépôt Git (n'importe où)
 
 ```bash
 cd /opt
-git clone https://github.com/R3coNYT/network-dashboard.git
+sudo git clone https://github.com/R3coNYT/network-dashboard.git
 cd network-dashboard
 sudo bash install.sh
 ```
@@ -92,7 +92,7 @@ Accès HTTPS : https://<IP_DU_SERVEUR>
 
 ```bash
 cd /opt/network-dashboard
-git pull
+sudo git pull
 sudo bash update.sh
 ```
 
