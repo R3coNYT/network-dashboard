@@ -662,6 +662,7 @@ a {
   position: relative;
   overflow: hidden;
   will-change: transform;
+}
 
 /* Image overlay — covers the letter when loaded */
 .app-icon-img {
