@@ -548,7 +548,7 @@ function buildAppCardHTML(app) {
          style="background:${color}1a;color:${color};border-color:${color}33;"
          aria-hidden="true">
       ${initial}
-      ${app.image_url ? `<img src="${escapeHtml(app.image_url)}" alt="" class="app-icon-img" onerror="this.style.display='none'">` : ''}
+      ${app.image_url ? `<img src="${escapeHtml(app.image_url)}" alt="" class="app-icon-img" width="48" height="48" loading="lazy" decoding="async" onerror="this.style.display='none'">` : ''}
     </div>`;
 
   const descHTML = app.description

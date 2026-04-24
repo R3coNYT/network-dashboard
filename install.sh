@@ -188,6 +188,15 @@ server {
 
     client_max_body_size 6m;
 
+    # Gzip compression
+    gzip              on;
+    gzip_vary         on;
+    gzip_proxied      any;
+    gzip_comp_level   6;
+    gzip_min_length   1024;
+    gzip_types        text/plain text/css text/javascript application/javascript
+                      application/json image/svg+xml;
+
     # Security headers
     add_header X-Frame-Options        "SAMEORIGIN"           always;
     add_header X-Content-Type-Options "nosniff"              always;
@@ -212,13 +221,13 @@ server {
     # ── Static: CSS ───────────────────────────────────────────────
     location ~* \.css\$ {
         try_files \$uri =404;
-        add_header Cache-Control "public, max-age=86400";
+        add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
     # ── Static: JS ────────────────────────────────────────────────
     location ~* \.js\$ {
         try_files \$uri =404;
-        add_header Cache-Control "public, max-age=86400";
+        add_header Cache-Control "public, max-age=31536000, immutable";
     }
 
     # ── API proxy → Flask ─────────────────────────────────────────
@@ -237,7 +246,7 @@ server {
     # ── Uploaded images ──────────────────────────────────────────
     location /uploads/ {
         alias ${APP_DIR}/uploads/;
-        add_header Cache-Control "public, max-age=86400";
+        add_header Cache-Control "public, max-age=31536000, immutable";
         add_header X-Content-Type-Options "nosniff" always;
     }
 
