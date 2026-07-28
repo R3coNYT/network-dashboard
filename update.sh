@@ -37,8 +37,15 @@ if [[ -d "${SOURCE_DIR}/.git" ]]; then
     # different user than the one running this script (e.g. sudo as root
     # on a directory owned by your regular user).
     git config --global --add safe.directory "${SOURCE_DIR}"
+    # Ignore file-mode-only changes (e.g. a stray `chmod +x update.sh`),
+    # which git would otherwise treat as a local modification and block the pull.
+    git -C "${SOURCE_DIR}" config core.fileMode false
     info "Pulling latest changes from Git..."
-    git -C "${SOURCE_DIR}" pull
+    if ! git -C "${SOURCE_DIR}" pull; then
+        warn "git pull failed — discarding local changes in ${SOURCE_DIR} and retrying..."
+        git -C "${SOURCE_DIR}" reset --hard HEAD
+        git -C "${SOURCE_DIR}" pull
+    fi
     success "Repository up to date"
 else
     warn "No .git directory found in ${SOURCE_DIR} — skipping git pull."
