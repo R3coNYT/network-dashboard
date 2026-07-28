@@ -195,10 +195,12 @@ async function loadIpStatus() {
 }
 
 function renderIpStatus(data) {
+  const wrapper = document.getElementById('ipStatus');
   const content = document.getElementById('ipStatusContent');
   if (!content) return;
 
   if (!data || !data.current) {
+    if (wrapper) wrapper.classList.remove('has-alert');
     content.classList.remove('ip-status-alert');
     content.innerHTML = `
       <div class="ip-status-info">
@@ -210,6 +212,7 @@ function renderIpStatus(data) {
   const { current, confirmed, previous } = data;
 
   if (confirmed) {
+    if (wrapper) wrapper.classList.remove('has-alert');
     content.classList.remove('ip-status-alert');
     content.innerHTML = `
       <span class="ip-status-dot" aria-hidden="true"></span>
@@ -220,7 +223,8 @@ function renderIpStatus(data) {
     return;
   }
 
-  // Unconfirmed / newly detected IP → red blinking alert
+  // Unconfirmed / newly detected IP → red blinking alert, anchored below the header
+  if (wrapper) wrapper.classList.add('has-alert');
   content.classList.add('ip-status-alert');
   const previousRowHTML = previous
     ? `<span>Previous: <b>${escapeHtml(previous.ip)}</b> — ${formatIpDate(previous.last_fetch)}</span>`

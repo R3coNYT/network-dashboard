@@ -220,6 +220,16 @@ a {
   align-items: center;
   gap: 8px;
   max-width: min(92vw, 760px);
+  z-index: 5;
+}
+
+/* Alert content is taller than the header — anchor it as a dropdown
+   below the header bar instead of vertically centering inside it. */
+.ip-status.has-alert {
+  top: 100%;
+  transform: translateX(-50%);
+  margin-top: 10px;
+  align-items: flex-start;
 }
 
 /* Always-visible manual check button */
@@ -324,6 +334,7 @@ a {
   padding: 14px 18px;
   background: var(--danger-light);
   border: 1px solid rgba(239, 68, 68, 0.4);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   animation: ipAlertBlink 2.4s ease-in-out infinite;
 }
 
