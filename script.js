@@ -176,7 +176,7 @@ function formatIpDate(raw) {
   const iso = raw.includes('T') ? raw : raw.replace(' ', 'T');
   const d = new Date(iso);
   if (isNaN(d.getTime())) return raw;
-  return d.toLocaleString(undefined, {
+  return d.toLocaleString('en-US', {
     year: 'numeric', month: 'short', day: 'numeric',
     hour: '2-digit', minute: '2-digit'
   });
