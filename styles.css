@@ -301,12 +301,47 @@ a {
   .ip-status-content {
     max-width: none;
   }
+
+  /* Non-alert states (confirmed / no-data) collapse to just the dot,
+     centered, and expand into a dropdown with the full info on tap. */
+  .ip-status-content:not(.ip-status-alert) {
+    padding: 8px;
+    gap: 0;
+    justify-content: center;
+    cursor: pointer;
+  }
+
+  .ip-status-content:not(.ip-status-alert) .ip-status-info {
+    display: none;
+  }
+
+  .ip-status-content.ip-status-expanded:not(.ip-status-alert) {
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    margin-top: 10px;
+    padding: 10px 16px;
+    gap: 10px;
+    justify-content: flex-start;
+    background: rgba(15, 17, 26, 0.98);
+    box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
+    z-index: 10;
+  }
+
+  .ip-status-content.ip-status-expanded:not(.ip-status-alert) .ip-status-info {
+    display: flex;
+  }
 }
 
 @media (max-width: 480px) {
   .ip-status-content {
     padding: 6px 10px;
     font-size: 0.72rem;
+  }
+
+  .ip-status-content:not(.ip-status-alert) {
+    padding: 8px;
   }
 }
 

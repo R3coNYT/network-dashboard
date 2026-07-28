@@ -197,6 +197,7 @@ async function loadIpStatus() {
 function renderIpStatus(data) {
   const content = document.getElementById('ipStatusContent');
   if (!content) return;
+  content.classList.remove('ip-status-expanded');
 
   if (!data || !data.current) {
     content.classList.remove('ip-status-alert');
@@ -1020,6 +1021,21 @@ document.addEventListener('DOMContentLoaded', async () => {
   loadIpStatus();
   setInterval(loadIpStatus, 5 * 60 * 1000); // refresh every 5 minutes
   document.getElementById('btnCheckIp').addEventListener('click', manualCheckIp);
+
+  // On mobile, the confirmed/no-data pill collapses to just the dot —
+  // tapping it toggles a dropdown with the full info (desktop unaffected).
+  document.getElementById('ipStatusContent').addEventListener('click', e => {
+    const el = e.currentTarget;
+    if (el.classList.contains('ip-status-alert')) return;
+    el.classList.toggle('ip-status-expanded');
+  });
+  document.addEventListener('click', e => {
+    const content = document.getElementById('ipStatusContent');
+    if (!content || !content.classList.contains('ip-status-expanded')) return;
+    if (!document.getElementById('ipStatus').contains(e.target)) {
+      content.classList.remove('ip-status-expanded');
+    }
+  });
 
   // ── Header buttons ──────────────────────────────────────────
   document.getElementById('btnAddApp').addEventListener('click', () => {
