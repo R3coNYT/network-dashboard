@@ -18,10 +18,17 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="/opt/network-dashboard"
 APP_NAME="netdashboard"
 
-# Determine the user who called sudo (to run the service under)
-SERVICE_USER="${SUDO_USER:-}"
-if [[ -z "$SERVICE_USER" || "$SERVICE_USER" == "root" ]]; then
-    SERVICE_USER="www-data"
+# Determine the service user. Reuse the one from a previous install (stored
+# in .service_user) so reruns stay consistent no matter how the script is
+# invoked (via `sudo` as a regular user, or from a root shell directly).
+SERVICE_USER_FILE="${APP_DIR}/.service_user"
+if [[ -f "$SERVICE_USER_FILE" ]]; then
+    SERVICE_USER="$(cat "$SERVICE_USER_FILE")"
+else
+    SERVICE_USER="${SUDO_USER:-}"
+    if [[ -z "$SERVICE_USER" || "$SERVICE_USER" == "root" ]]; then
+        SERVICE_USER="www-data"
+    fi
 fi
 
 SSL_DIR="/etc/ssl/${APP_NAME}"
@@ -77,6 +84,7 @@ info "Copie des fichiers vers ${APP_DIR}..."
 mkdir -p "$APP_DIR"
 rsync -a --exclude='.git' --exclude='.venv' --exclude='netdashboard.db' --exclude='public_ip.db' \
     "${SOURCE_DIR}/" "${APP_DIR}/"
+echo "$SERVICE_USER" > "$SERVICE_USER_FILE"
 chown -R "${SERVICE_USER}:${SERVICE_USER}" "$APP_DIR" 2>/dev/null || true
 success "Fichiers copiés dans ${APP_DIR}"
 

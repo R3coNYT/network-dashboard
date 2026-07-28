@@ -183,31 +183,35 @@ function formatIpDate(raw) {
 }
 
 async function loadIpStatus() {
-  const el = document.getElementById('ipStatus');
-  if (!el) return;
-  let data;
+  const content = document.getElementById('ipStatusContent');
+  if (!content) return;
+  let data = null;
   try {
     data = await api.get('/api/public-ip');
   } catch (_) {
-    el.hidden = true;
-    return;
+    /* keep last known state on failure */
   }
   renderIpStatus(data);
 }
 
 function renderIpStatus(data) {
-  const el = document.getElementById('ipStatus');
-  if (!el || !data || !data.current) {
-    if (el) el.hidden = true;
+  const content = document.getElementById('ipStatusContent');
+  if (!content) return;
+
+  if (!data || !data.current) {
+    content.classList.remove('ip-status-alert');
+    content.innerHTML = `
+      <div class="ip-status-info">
+        <span class="ip-status-meta">No public IP recorded yet</span>
+      </div>`;
     return;
   }
 
   const { current, confirmed, previous } = data;
-  el.hidden = false;
 
   if (confirmed) {
-    el.classList.remove('ip-status-alert');
-    el.innerHTML = `
+    content.classList.remove('ip-status-alert');
+    content.innerHTML = `
       <span class="ip-status-dot" aria-hidden="true"></span>
       <div class="ip-status-info">
         <span class="ip-status-value">${escapeHtml(current.ip)}</span>
@@ -217,12 +221,12 @@ function renderIpStatus(data) {
   }
 
   // Unconfirmed / newly detected IP → red blinking alert
-  el.classList.add('ip-status-alert');
+  content.classList.add('ip-status-alert');
   const previousRowHTML = previous
     ? `<span>Previous: <b>${escapeHtml(previous.ip)}</b> — ${formatIpDate(previous.last_fetch)}</span>`
     : `<span>No previously confirmed IP</span>`;
 
-  el.innerHTML = `
+  content.innerHTML = `
     <div class="ip-status-alert-title">
       <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
         <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
@@ -252,6 +256,24 @@ async function confirmNewIp(ip) {
     showToast(err.message, 'error');
   }
 }
+
+async function manualCheckIp() {
+  const btn = document.getElementById('btnCheckIp');
+  if (!btn || btn.disabled) return;
+  btn.disabled = true;
+  btn.classList.add('checking');
+  try {
+    await api.post('/api/public-ip/check');
+    await loadIpStatus();
+    showToast('Public IP checked');
+  } catch (err) {
+    showToast(err.message, 'error');
+  } finally {
+    btn.disabled = false;
+    btn.classList.remove('checking');
+  }
+}
+
 
 // ================================================================
 // TOAST NOTIFICATIONS
@@ -984,6 +1006,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   // ── Public IP status widget ──────────────────────────────────
   loadIpStatus();
   setInterval(loadIpStatus, 5 * 60 * 1000); // refresh every 5 minutes
+  document.getElementById('btnCheckIp').addEventListener('click', manualCheckIp);
 
   // ── Header buttons ──────────────────────────────────────────
   document.getElementById('btnAddApp').addEventListener('click', () => {

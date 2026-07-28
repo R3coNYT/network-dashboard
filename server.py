@@ -6,7 +6,10 @@ import re
 import uuid
 import sqlite3
 import logging
+from datetime import datetime
 from flask import Flask, request, jsonify, send_from_directory
+
+import check_public_ip as ip_checker
 
 # ── Configuration ────────────────────────────────────────────────
 BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
@@ -379,6 +382,29 @@ def api_confirm_public_ip():
         conn.execute('DELETE FROM last_confirmed_ip')
         conn.execute('INSERT INTO last_confirmed_ip (ip) VALUES (?)', (ip,))
         conn.commit()
+    return jsonify({'ok': True, 'ip': ip})
+
+
+@app.route('/api/public-ip/check', methods=['POST'])
+def api_check_public_ip():
+    ip = ip_checker.fetch_public_ip()
+    if not ip:
+        return jsonify({'error': 'Could not fetch public IP'}), 502
+    now = datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    with get_ip_db() as conn:
+        row = conn.execute('SELECT id FROM public_ip WHERE ip = ?', (ip,)).fetchone()
+        if row:
+            conn.execute(
+                'UPDATE public_ip SET iteration = iteration + 1, last_fetch = ? WHERE ip = ?',
+                (now, ip)
+            )
+        else:
+            conn.execute(
+                'INSERT INTO public_ip (ip, iteration, last_fetch) VALUES (?, 1, ?)',
+                (ip, now)
+            )
+        conn.commit()
+    log.info('Public IP manually checked: %s', ip)
     return jsonify({'ok': True, 'ip': ip})
 
 

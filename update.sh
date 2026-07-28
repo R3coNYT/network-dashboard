@@ -16,10 +16,17 @@ APP_DIR="/opt/network-dashboard"
 APP_NAME="netdashboard"
 VENV_DIR="${APP_DIR}/.venv"
 
-# Determine the service user
-SERVICE_USER="${SUDO_USER:-}"
-if [[ -z "$SERVICE_USER" || "$SERVICE_USER" == "root" ]]; then
-    SERVICE_USER="www-data"
+# Determine the service user. Reuse the one persisted at install time
+# (.service_user) so it stays consistent no matter how this script is
+# invoked (via `sudo` as a regular user, or from a root shell directly).
+SERVICE_USER_FILE="${APP_DIR}/.service_user"
+if [[ -f "$SERVICE_USER_FILE" ]]; then
+    SERVICE_USER="$(cat "$SERVICE_USER_FILE")"
+else
+    SERVICE_USER="${SUDO_USER:-}"
+    if [[ -z "$SERVICE_USER" || "$SERVICE_USER" == "root" ]]; then
+        SERVICE_USER="www-data"
+    fi
 fi
 
 GREEN='\033[0;32m'; BLUE='\033[0;34m'; YELLOW='\033[1;33m'; NC='\033[0m'
