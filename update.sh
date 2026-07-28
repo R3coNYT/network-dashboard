@@ -33,6 +33,10 @@ warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 
 # ── Git pull ─────────────────────────────────────────────────────
 if [[ -d "${SOURCE_DIR}/.git" ]]; then
+    # Avoid "detected dubious ownership" when the repo is owned by a
+    # different user than the one running this script (e.g. sudo as root
+    # on a directory owned by your regular user).
+    git config --global --add safe.directory "${SOURCE_DIR}"
     info "Pulling latest changes from Git..."
     git -C "${SOURCE_DIR}" pull
     success "Repository up to date"
