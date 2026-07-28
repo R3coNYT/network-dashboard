@@ -219,8 +219,21 @@ a {
   display: flex;
   align-items: center;
   gap: 8px;
-  max-width: min(92vw, 760px);
+  max-width: min(70vw, 760px);
   z-index: 5;
+}
+
+/* On narrow screens, drop out of absolute centering (which risks
+   colliding with the brand/action buttons) and become a normal flex
+   item of the header row instead — no overlap, still no horizontal scroll. */
+@media (max-width: 768px) {
+  .ip-status {
+    position: static;
+    transform: none;
+    max-width: none;
+    flex-shrink: 1;
+    min-width: 0;
+  }
 }
 
 /* Always-visible manual check button */
@@ -267,7 +280,7 @@ a {
   to { transform: rotate(360deg); }
 }
 
-/* Dynamic content bubble */
+/* Dynamic content bubble (normal / confirmed / no-data states) */
 .ip-status-content {
   display: flex;
   align-items: center;
@@ -282,6 +295,19 @@ a {
   overflow: hidden;
   min-width: 0;
   max-width: min(50vw, 600px);
+}
+
+@media (max-width: 768px) {
+  .ip-status-content {
+    max-width: none;
+  }
+}
+
+@media (max-width: 480px) {
+  .ip-status-content {
+    padding: 6px 10px;
+    font-size: 0.72rem;
+  }
 }
 
 .ip-status-dot {
@@ -316,19 +342,27 @@ a {
 }
 
 /* ── Alert state: new / unconfirmed IP detected ─────────────────── */
-/* Wide single-row layout so the box stays within the header's height
-   instead of stacking content vertically and overflowing it. */
+/* Rendered as a dropdown anchored below the check button/header, so
+   its (taller, stacked) content never has to squeeze into the header
+   row or collide with the brand/action buttons on any screen size. */
 .ip-status-content.ip-status-alert {
-  max-width: min(95vw, 920px);
-  white-space: nowrap;
-  flex-direction: row;
-  align-items: center;
-  gap: 16px;
-  padding: 10px 18px;
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 10px;
+  width: max-content;
+  max-width: min(92vw, 440px);
+  white-space: normal;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 10px;
+  padding: 14px 16px;
   background: var(--danger-light);
   border: 1px solid rgba(239, 68, 68, 0.4);
   box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
   animation: ipAlertBlink 2.4s ease-in-out infinite;
+  z-index: 10;
 }
 
 @keyframes ipAlertBlink {
@@ -339,11 +373,10 @@ a {
 .ip-status-alert-title {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   font-weight: 700;
   color: var(--danger);
-  font-size: 0.8rem;
-  flex-shrink: 0;
+  font-size: 0.82rem;
 }
 
 .ip-status-alert-title svg {
@@ -352,20 +385,19 @@ a {
   flex-shrink: 0;
 }
 
-/* Old IP (left) vs new IP (right), side by side */
+/* Old IP (left) vs new IP (right), side by side on wide screens */
 .ip-status-alert-compare {
   display: flex;
   align-items: center;
   gap: 10px;
-  flex-shrink: 0;
 }
 
 .ip-status-alert-col {
   display: flex;
-  flex-direction: row;
-  align-items: baseline;
-  gap: 6px;
-  white-space: nowrap;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
 }
 
 .ip-status-alert-label {
@@ -388,6 +420,8 @@ a {
 .ip-status-alert-date {
   font-size: 0.72rem;
   color: var(--text-2);
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .ip-status-alert-sep {
@@ -396,6 +430,7 @@ a {
   justify-content: center;
   color: var(--danger);
   flex-shrink: 0;
+  transition: transform var(--t-fast);
 }
 
 .ip-status-alert-sep svg {
@@ -403,22 +438,35 @@ a {
   height: 16px;
 }
 
+/* Stack old/new vertically on very narrow screens */
+@media (max-width: 420px) {
+  .ip-status-content.ip-status-alert {
+    max-width: calc(100vw - 24px);
+  }
+
+  .ip-status-alert-compare {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+
+  .ip-status-alert-sep {
+    transform: rotate(90deg);
+  }
+}
+
 .ip-status-alert-actions {
   display: flex;
+  flex-wrap: wrap;
   gap: 8px;
-  flex-shrink: 0;
 }
 
 .ip-status-alert-actions .btn {
   height: 30px;
   padding: 0 12px;
   font-size: 0.76rem;
-}
-
-@media (max-width: 900px) {
-  .ip-status {
-    display: none;
-  }
+  flex: 1;
+  justify-content: center;
 }
 
 /* ============================================================

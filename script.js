@@ -220,7 +220,7 @@ function renderIpStatus(data) {
     return;
   }
 
-  // Unconfirmed / newly detected IP → red blinking alert, beside the check button
+  // Unconfirmed / newly detected IP → red blinking alert dropdown
   content.classList.add('ip-status-alert');
   const oldColHTML = previous
     ? `<span class="ip-status-alert-label">Previous</span>
