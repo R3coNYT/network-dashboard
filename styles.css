@@ -223,15 +223,6 @@ a {
   z-index: 5;
 }
 
-/* Alert content is taller than the header — anchor it as a dropdown
-   below the header bar instead of vertically centering inside it. */
-.ip-status.has-alert {
-  top: 100%;
-  transform: translateX(-50%);
-  margin-top: 10px;
-  align-items: flex-start;
-}
-
 /* Always-visible manual check button */
 .ip-status-check {
   display: inline-flex;
@@ -325,7 +316,14 @@ a {
 }
 
 /* ── Alert state: new / unconfirmed IP detected ─────────────────── */
+/* Anchored as a dropdown below the check button (which stays put in
+   the header), since the alert content is taller than the header. */
 .ip-status-content.ip-status-alert {
+  position: absolute;
+  top: 100%;
+  left: 50%;
+  transform: translateX(-50%);
+  margin-top: 10px;
   max-width: min(85vw, 700px);
   white-space: normal;
   flex-direction: column;
