@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # ================================================================
 # NetDashboard — update.sh
-# Met à jour les dépendances Python, recharge nginx et redémarre Flask.
-# Usage : sudo bash update.sh
+# Updates Python dependencies, reloads nginx and restarts Flask.
+# Usage: sudo bash update.sh
 # ================================================================
 set -euo pipefail
 
 if [[ $EUID -ne 0 ]]; then
-    echo "[!] Ce script doit être exécuté en tant que root : sudo bash update.sh"
+    echo "[!] This script must be run as root: sudo bash update.sh"
     exit 1
 fi
 
@@ -35,8 +35,8 @@ success() { echo -e "${GREEN}[✓]${NC} $*"; }
 warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 
 # ── Sanity checks ─────────────────────────────────────────────────
-[[ ! -d "$APP_DIR" ]]  && { warn "${APP_DIR} introuvable — relancez install.sh."; exit 1; }
-[[ ! -d "$VENV_DIR" ]] && { warn "Virtualenv absent — relancez install.sh."; exit 1; }
+[[ ! -d "$APP_DIR" ]]  && { warn "${APP_DIR} not found — run install.sh first."; exit 1; }
+[[ ! -d "$VENV_DIR" ]] && { warn "Virtualenv missing — run install.sh first."; exit 1; }
 
 # ── Git pull ─────────────────────────────────────────────────────
 if [[ -d "${SOURCE_DIR}/.git" ]]; then
@@ -60,40 +60,40 @@ fi
 
 # ── Sync source → /opt/network-dashboard ─────────────────────────
 if command -v rsync &>/dev/null; then
-    info "Synchronisation des fichiers vers ${APP_DIR}..."
+    info "Syncing files to ${APP_DIR}..."
     rsync -a --exclude='.git' --exclude='.venv' --exclude='netdashboard.db' --exclude='public_ip.db' --exclude='uploads/' \
         "${SOURCE_DIR}/" "${APP_DIR}/"
     chown -R "${SERVICE_USER}:${SERVICE_USER}" "$APP_DIR" 2>/dev/null || true
-    success "Fichiers synchronisés dans ${APP_DIR}"
+    success "Files synced to ${APP_DIR}"
 else
-    warn "rsync introuvable — copie manuelle requise vers ${APP_DIR}"
+    warn "rsync not found — manual copy to ${APP_DIR} required"
 fi
 
 # ── Python dependencies ───────────────────────────────────────────
 if [[ -f "${APP_DIR}/requirements.txt" ]]; then
-    info "Mise à jour des dépendances Python..."
+    info "Updating Python dependencies..."
     "$VENV_DIR/bin/pip" install --quiet --upgrade -r "${APP_DIR}/requirements.txt"
-    success "Dépendances Python à jour"
+    success "Python dependencies up to date"
 fi
 
 # ── nginx ─────────────────────────────────────────────────────────
-info "Validation de la configuration nginx..."
+info "Validating nginx configuration..."
 if nginx -t 2>/dev/null; then
-    success "Configuration nginx valide"
+    success "nginx configuration valid"
     systemctl reload nginx
-    success "nginx rechargé"
+    success "nginx reloaded"
 else
-    warn "Erreur dans la configuration nginx — rechargement annulé. Corrigez puis relancez."
+    warn "Error in nginx configuration — reload aborted. Fix it and re-run."
     exit 1
 fi
 
 # ── Flask service ─────────────────────────────────────────────────
-info "Redémarrage du service Flask (${APP_NAME})..."
+info "Restarting Flask service (${APP_NAME})..."
 if systemctl is-enabled --quiet "${APP_NAME}.service" 2>/dev/null; then
     systemctl restart "${APP_NAME}.service"
-    success "Service ${APP_NAME} redémarré"
+    success "Service ${APP_NAME} restarted"
 else
-    warn "Service ${APP_NAME} non trouvé — relancez install.sh pour l'enregistrer."
+    warn "Service ${APP_NAME} not found — run install.sh to register it."
 fi
 
 # ── Self-heal executable bit ──────────────────────────────────────
@@ -102,4 +102,4 @@ fi
 chmod +x "${APP_DIR}/update.sh" "${APP_DIR}/install.sh" 2>/dev/null || true
 
 echo ""
-success "Mise à jour terminée !"
+success "Update complete!"
