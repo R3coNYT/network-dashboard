@@ -358,16 +358,16 @@ a {
   align-items: stretch;
   gap: 10px;
   padding: 14px 16px;
-  background: var(--danger-light);
-  border: 1px solid rgba(239, 68, 68, 0.4);
-  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.5);
+  background: rgba(76, 15, 15, 0.97);
+  border: 1px solid rgba(239, 68, 68, 0.5);
+  box-shadow: 0 16px 40px rgba(0, 0, 0, 0.6);
   animation: ipAlertBlink 2.4s ease-in-out infinite;
   z-index: 10;
 }
 
 @keyframes ipAlertBlink {
-  0%, 100% { background: var(--danger-light); border-color: rgba(239, 68, 68, 0.4); }
-  50%      { background: rgba(239, 68, 68, 0.32); border-color: rgba(239, 68, 68, 0.7); }
+  0%, 100% { background: rgba(76, 15, 15, 0.97);  border-color: rgba(239, 68, 68, 0.5); }
+  50%      { background: rgba(127, 22, 22, 0.97); border-color: rgba(239, 68, 68, 0.85); }
 }
 
 .ip-status-alert-title {
