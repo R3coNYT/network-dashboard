@@ -338,10 +338,11 @@ a {
 .ip-status-alert-title {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px;
   font-weight: 700;
   color: var(--danger);
-  font-size: 0.82rem;
+  font-size: 0.8rem;
+  flex-shrink: 0;
 }
 
 .ip-status-alert-title svg {
@@ -355,14 +356,15 @@ a {
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
 }
 
 .ip-status-alert-col {
   display: flex;
-  flex-direction: column;
-  gap: 2px;
-  flex: 1;
-  min-width: 0;
+  flex-direction: row;
+  align-items: baseline;
+  gap: 6px;
+  white-space: nowrap;
 }
 
 .ip-status-alert-label {
@@ -403,7 +405,7 @@ a {
 .ip-status-alert-actions {
   display: flex;
   gap: 8px;
-  margin-top: 2px;
+  flex-shrink: 0;
 }
 
 .ip-status-alert-actions .btn {
