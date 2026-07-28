@@ -220,11 +220,14 @@ function renderIpStatus(data) {
     return;
   }
 
-  // Unconfirmed / newly detected IP → red blinking alert, anchored below the header
+  // Unconfirmed / newly detected IP → red blinking alert, beside the check button
   content.classList.add('ip-status-alert');
-  const previousRowHTML = previous
-    ? `<span>Previous: <b>${escapeHtml(previous.ip)}</b> — ${formatIpDate(previous.last_fetch)}</span>`
-    : `<span>No previously confirmed IP</span>`;
+  const oldColHTML = previous
+    ? `<span class="ip-status-alert-label">Previous</span>
+       <span class="ip-status-alert-ip">${escapeHtml(previous.ip)}</span>
+       <span class="ip-status-alert-date">${formatIpDate(previous.last_fetch)}</span>`
+    : `<span class="ip-status-alert-label">Previous</span>
+       <span class="ip-status-alert-date">No previously confirmed IP</span>`;
 
   content.innerHTML = `
     <div class="ip-status-alert-title">
@@ -235,9 +238,19 @@ function renderIpStatus(data) {
       </svg>
       New public IP detected
     </div>
-    <div class="ip-status-alert-rows">
-      ${previousRowHTML}
-      <span>New: <b>${escapeHtml(current.ip)}</b> — ${formatIpDate(current.last_fetch)}</span>
+    <div class="ip-status-alert-compare">
+      <div class="ip-status-alert-col">${oldColHTML}</div>
+      <div class="ip-status-alert-sep" aria-hidden="true">
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="5" y1="12" x2="19" y2="12"/>
+          <polyline points="12 5 19 12 12 19"/>
+        </svg>
+      </div>
+      <div class="ip-status-alert-col">
+        <span class="ip-status-alert-label">New</span>
+        <span class="ip-status-alert-ip">${escapeHtml(current.ip)}</span>
+        <span class="ip-status-alert-date">${formatIpDate(current.last_fetch)}</span>
+      </div>
     </div>
     <div class="ip-status-alert-actions">
       <a class="btn btn-ghost" href="https://www.monippublique.com" target="_blank" rel="noopener noreferrer">View IP</a>

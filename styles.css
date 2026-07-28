@@ -316,14 +316,8 @@ a {
 }
 
 /* ── Alert state: new / unconfirmed IP detected ─────────────────── */
-/* Anchored as a dropdown below the check button (which stays put in
-   the header), since the alert content is taller than the header. */
+/* Sits inline, right next to the check button, not a dropdown. */
 .ip-status-content.ip-status-alert {
-  position: absolute;
-  top: 100%;
-  left: 50%;
-  transform: translateX(-50%);
-  margin-top: 10px;
   max-width: min(85vw, 700px);
   white-space: normal;
   flex-direction: column;
@@ -356,17 +350,54 @@ a {
   flex-shrink: 0;
 }
 
-.ip-status-alert-rows {
+/* Old IP (left) vs new IP (right), side by side */
+.ip-status-alert-compare {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ip-status-alert-col {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  font-size: 0.76rem;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+
+.ip-status-alert-label {
+  font-size: 0.65rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-3);
+}
+
+.ip-status-alert-ip {
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.ip-status-alert-date {
+  font-size: 0.72rem;
   color: var(--text-2);
 }
 
-.ip-status-alert-rows b {
-  color: var(--text);
-  font-variant-numeric: tabular-nums;
+.ip-status-alert-sep {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--danger);
+  flex-shrink: 0;
+}
+
+.ip-status-alert-sep svg {
+  width: 16px;
+  height: 16px;
 }
 
 .ip-status-alert-actions {
