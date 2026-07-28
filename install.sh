@@ -75,7 +75,7 @@ fi
 # ── Copie des fichiers dans /opt/network-dashboard ───────────────
 info "Copie des fichiers vers ${APP_DIR}..."
 mkdir -p "$APP_DIR"
-rsync -a --exclude='.git' --exclude='.venv' --exclude='netdashboard.db' \
+rsync -a --exclude='.git' --exclude='.venv' --exclude='netdashboard.db' --exclude='public_ip.db' \
     "${SOURCE_DIR}/" "${APP_DIR}/"
 chown -R "${SERVICE_USER}:${SERVICE_USER}" "$APP_DIR" 2>/dev/null || true
 success "Fichiers copiés dans ${APP_DIR}"
@@ -251,12 +251,14 @@ server {
     }
 
     # ── Block sensitive files ─────────────────────────────────────
-    location ~ /\.(git|env|venv|db|py|sh|yaml|yml|md)\$ {
+    # Hidden files/dirs anywhere in the path (.git, .env, .venv...)
+    location ~ /\. {
         deny all;
         return 404;
     }
 
-    location ~* \.(txt)\$ {
+    # Backend source, data and config files, regardless of position
+    location ~* \.(db|py|sh|ya?ml|md|txt|cfg|ini|conf|lock)\$ {
         deny all;
         return 404;
     }
@@ -397,6 +399,20 @@ CRON
 chmod 644 "$CRON_FILE"
 success "Tâche cron configurée (1er et 15 du mois à 03h00)"
 
+# ── cron.d entry: public IP check (twice a day: midnight + noon) ─
+CRON_IP_FILE="/etc/cron.d/${APP_NAME}-public-ip"
+cat > "$CRON_IP_FILE" <<CRON
+# NetDashboard — vérification de l'IP publique 2x/jour (00h00 et 12h00)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+0 0,12 * * * ${SERVICE_USER} ${VENV_DIR}/bin/python ${APP_DIR}/check_public_ip.py >> /var/log/${APP_NAME}/public-ip.log 2>&1
+CRON
+chmod 644 "$CRON_IP_FILE"
+success "Tâche cron configurée (vérification IP publique à 00h00 et 12h00)"
+
+# Run it once immediately so the dashboard has data right away
+sudo -u "${SERVICE_USER}" "${VENV_DIR}/bin/python" "${APP_DIR}/check_public_ip.py" >> "${LOG_DIR}/public-ip.log" 2>&1 || warn "Première vérification de l'IP publique échouée (sera retentée par cron)."
+
 # ── Summary ────────────────────────────────────────────────────────
 echo ""
 echo -e "${BOLD}${GREEN}══════════════════════════════════════════════${NC}"
@@ -410,6 +426,7 @@ echo -e "  Logs Flask       : ${LOG_DIR}/flask.log"
 echo -e "  Logs nginx       : /var/log/nginx/${APP_NAME}_access.log"
 echo -e "  Certificat       : ${SSL_DIR}/cert.pem"
 echo -e "  Renouvellement cert : 1er et 15 du mois à 03h00"
+echo -e "  Vérification IP publique : 00h00 et 12h00 (logs : ${LOG_DIR}/public-ip.log)"
 echo ""
 echo -e "  ${YELLOW}Note : certificat auto-signé — votre navigateur affichera"
 echo -e "  un avertissement de sécurité. Acceptez l'exception pour accéder au site.${NC}"

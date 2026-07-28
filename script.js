@@ -168,6 +168,92 @@ function setUploadState(prefix, state) {
 }
 
 // ================================================================
+// PUBLIC IP STATUS
+// ================================================================
+
+function formatIpDate(raw) {
+  if (!raw) return '—';
+  const iso = raw.includes('T') ? raw : raw.replace(' ', 'T');
+  const d = new Date(iso);
+  if (isNaN(d.getTime())) return raw;
+  return d.toLocaleString(undefined, {
+    year: 'numeric', month: 'short', day: 'numeric',
+    hour: '2-digit', minute: '2-digit'
+  });
+}
+
+async function loadIpStatus() {
+  const el = document.getElementById('ipStatus');
+  if (!el) return;
+  let data;
+  try {
+    data = await api.get('/api/public-ip');
+  } catch (_) {
+    el.hidden = true;
+    return;
+  }
+  renderIpStatus(data);
+}
+
+function renderIpStatus(data) {
+  const el = document.getElementById('ipStatus');
+  if (!el || !data || !data.current) {
+    if (el) el.hidden = true;
+    return;
+  }
+
+  const { current, confirmed, previous } = data;
+  el.hidden = false;
+
+  if (confirmed) {
+    el.classList.remove('ip-status-alert');
+    el.innerHTML = `
+      <span class="ip-status-dot" aria-hidden="true"></span>
+      <div class="ip-status-info">
+        <span class="ip-status-value">${escapeHtml(current.ip)}</span>
+        <span class="ip-status-meta">Updated ${formatIpDate(current.last_fetch)} · seen ${current.iteration}×</span>
+      </div>`;
+    return;
+  }
+
+  // Unconfirmed / newly detected IP → red blinking alert
+  el.classList.add('ip-status-alert');
+  const previousRowHTML = previous
+    ? `<span>Previous: <b>${escapeHtml(previous.ip)}</b> — ${formatIpDate(previous.last_fetch)}</span>`
+    : `<span>No previously confirmed IP</span>`;
+
+  el.innerHTML = `
+    <div class="ip-status-alert-title">
+      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/>
+        <line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      New public IP detected
+    </div>
+    <div class="ip-status-alert-rows">
+      ${previousRowHTML}
+      <span>New: <b>${escapeHtml(current.ip)}</b> — ${formatIpDate(current.last_fetch)}</span>
+    </div>
+    <div class="ip-status-alert-actions">
+      <a class="btn btn-ghost" href="https://www.monippublique.com" target="_blank" rel="noopener noreferrer">View IP</a>
+      <button type="button" class="btn btn-danger" id="btnConfirmNewIp">Confirm this new IP</button>
+    </div>`;
+
+  document.getElementById('btnConfirmNewIp').addEventListener('click', () => confirmNewIp(current.ip));
+}
+
+async function confirmNewIp(ip) {
+  try {
+    await api.post('/api/public-ip/confirm', { ip });
+    showToast(`IP ${ip} confirmed`);
+    await loadIpStatus();
+  } catch (err) {
+    showToast(err.message, 'error');
+  }
+}
+
+// ================================================================
 // TOAST NOTIFICATIONS
 // ================================================================
 
@@ -894,6 +980,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     showToast('Unable to reach the server. Make sure Flask is running.', 'error');
   }
   renderAll();
+
+  // ── Public IP status widget ──────────────────────────────────
+  loadIpStatus();
+  setInterval(loadIpStatus, 5 * 60 * 1000); // refresh every 5 minutes
 
   // ── Header buttons ──────────────────────────────────────────
   document.getElementById('btnAddApp').addEventListener('click', () => {

@@ -16,6 +16,7 @@ Glassmorphism dark UI, drag & drop, SQLite persistence, served by nginx over HTT
 - **Flask REST API** — lightweight backend, no ORM
 - **Self-signed HTTPS** — RSA 4096 certificate, auto-renewed every 2 weeks via cron
 - **Image upload** — upload app icons directly from your device (max 5 MB)
+- **Public IP monitoring** — checks your public IP twice a day (00:00 and 12:00), logs every change, and flashes a red alert in the header when the IP differs from the last one you confirmed
 
 ---
 
@@ -39,6 +40,7 @@ network-dashboard/          ← Git repository (anywhere on disk)
 ├── styles.css
 ├── script.js
 ├── server.py
+├── check_public_ip.py
 ├── requirements.txt
 ├── install.sh
 └── update.sh
@@ -48,10 +50,12 @@ network-dashboard/          ← Git repository (anywhere on disk)
 ├── styles.css
 ├── script.js
 ├── server.py
+├── check_public_ip.py
 ├── requirements.txt
 ├── uploads/                ← uploaded app images
 ├── .venv/                  ← Python virtualenv
-└── netdashboard.db         ← SQLite database (created on first start)
+├── netdashboard.db         ← SQLite database (created on first start)
+└── public_ip.db            ← Public IP history (created by check_public_ip.py)
 ```
 
 ---
@@ -79,6 +83,7 @@ sudo bash install.sh
    - Security headers (HSTS, X-Frame-Options, CSP…)
 6. Creates a **systemd service** `netdashboard` (Flask, auto-start on boot)
 7. Sets up a **cron job** for certificate renewal (1st and 15th of each month at 03:00)
+8. Sets up a **cron job** for public IP monitoring (00:00 and 12:00 daily) and runs an initial check immediately
 
 At the end of the script, the access URL is displayed:
 
@@ -117,6 +122,8 @@ sudo bash update.sh
 | `PUT` | `/api/apps/reorder` | Reorder apps (and/or move between categories) |
 | `DELETE` | `/api/apps/:id` | Delete an application |
 | `POST` | `/api/upload` | Upload an image (multipart/form-data, max 5 MB) |
+| `GET` | `/api/public-ip` | Current public IP, iteration count, last fetch time and confirmation status |
+| `POST` | `/api/public-ip/confirm` | Confirm the current public IP as trusted (body: `{"ip": "1.2.3.4"}`) |
 
 ---
 
@@ -127,6 +134,7 @@ sudo bash update.sh
 | `/var/log/netdashboard/flask.log` | Flask stdout |
 | `/var/log/netdashboard/flask-error.log` | Flask errors |
 | `/var/log/netdashboard/cert-renewal.log` | SSL renewals |
+| `/var/log/netdashboard/public-ip.log` | Public IP checks (cron) |
 | `/var/log/nginx/netdashboard_access.log` | nginx access log |
 | `/var/log/nginx/netdashboard_error.log` | nginx error log |
 

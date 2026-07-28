@@ -9,12 +9,13 @@ import logging
 from flask import Flask, request, jsonify, send_from_directory
 
 # ── Configuration ────────────────────────────────────────────────
-BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
-DB_PATH      = os.path.join(BASE_DIR, 'netdashboard.db')
-STATIC_DIR   = BASE_DIR
-UPLOAD_DIR   = os.path.join(BASE_DIR, 'uploads')
-ALLOWED_IMG  = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico'}
-MAX_UPLOAD   = 5 * 1024 * 1024  # 5 MB
+BASE_DIR       = os.path.dirname(os.path.abspath(__file__))
+DB_PATH        = os.path.join(BASE_DIR, 'netdashboard.db')
+PUBLIC_IP_DB   = os.path.join(BASE_DIR, 'public_ip.db')
+STATIC_DIR     = BASE_DIR
+UPLOAD_DIR     = os.path.join(BASE_DIR, 'uploads')
+ALLOWED_IMG    = {'.jpg', '.jpeg', '.png', '.gif', '.webp', '.svg', '.ico'}
+MAX_UPLOAD     = 5 * 1024 * 1024  # 5 MB
 
 app = Flask(__name__, static_folder=STATIC_DIR)
 logging.basicConfig(level=logging.INFO, format='%(asctime)s %(levelname)s %(message)s')
@@ -83,6 +84,32 @@ def row_to_dict(row):
 
 def new_id(prefix=''):
     return prefix + uuid.uuid4().hex[:12]
+
+# ── Public IP database ───────────────────────────────────────────
+
+def get_ip_db():
+    conn = sqlite3.connect(PUBLIC_IP_DB)
+    conn.row_factory = sqlite3.Row
+    return conn
+
+
+def init_ip_db():
+    with get_ip_db() as conn:
+        conn.executescript('''
+            CREATE TABLE IF NOT EXISTS public_ip (
+                id         INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip         TEXT NOT NULL UNIQUE,
+                iteration  INTEGER NOT NULL DEFAULT 1,
+                last_fetch TEXT NOT NULL
+            );
+
+            CREATE TABLE IF NOT EXISTS last_confirmed_ip (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                ip TEXT NOT NULL
+            );
+        ''')
+        conn.commit()
+    log.info('Public IP database ready at %s', PUBLIC_IP_DB)
 
 # ── Categories ────────────────────────────────────────────────────
 
@@ -302,6 +329,59 @@ def serve_upload(filename):
     return send_from_directory(UPLOAD_DIR, filename)
 
 
+# ── Public IP monitoring ──────────────────────────────────────────
+
+@app.route('/api/public-ip', methods=['GET'])
+def api_public_ip():
+    with get_ip_db() as conn:
+        current = conn.execute(
+            'SELECT * FROM public_ip ORDER BY last_fetch DESC, id DESC LIMIT 1'
+        ).fetchone()
+        confirmed = conn.execute(
+            'SELECT * FROM last_confirmed_ip ORDER BY id DESC LIMIT 1'
+        ).fetchone()
+
+        if not current:
+            return jsonify({'current': None, 'confirmed': False, 'previous': None})
+
+        is_confirmed = bool(confirmed) and confirmed['ip'] == current['ip']
+
+        previous = None
+        if not is_confirmed and confirmed:
+            old_row = conn.execute(
+                'SELECT * FROM public_ip WHERE ip = ?', (confirmed['ip'],)
+            ).fetchone()
+            previous = {
+                'ip':         confirmed['ip'],
+                'last_fetch': old_row['last_fetch'] if old_row else None
+            }
+
+    return jsonify({
+        'current': {
+            'ip':         current['ip'],
+            'iteration':  current['iteration'],
+            'last_fetch': current['last_fetch']
+        },
+        'confirmed': is_confirmed,
+        'previous':  previous
+    })
+
+
+@app.route('/api/public-ip/confirm', methods=['POST'])
+def api_confirm_public_ip():
+    data = request.get_json(silent=True) or {}
+    ip = (data.get('ip') or '').strip()
+    if not ip:
+        return jsonify({'error': 'ip is required'}), 400
+    with get_ip_db() as conn:
+        if not conn.execute('SELECT 1 FROM public_ip WHERE ip = ?', (ip,)).fetchone():
+            return jsonify({'error': 'Unknown IP'}), 404
+        conn.execute('DELETE FROM last_confirmed_ip')
+        conn.execute('INSERT INTO last_confirmed_ip (ip) VALUES (?)', (ip,))
+        conn.commit()
+    return jsonify({'ok': True, 'ip': ip})
+
+
 # ── Static files (dev fallback — nginx handles this in production) ─
 
 @app.route('/', defaults={'path': ''})
@@ -319,4 +399,5 @@ def serve_static(path):
 
 if __name__ == '__main__':
     init_db()
+    init_ip_db()
     app.run(host='127.0.0.1', port=5000, debug=False)
