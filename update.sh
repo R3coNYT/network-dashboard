@@ -96,5 +96,10 @@ else
     warn "Service ${APP_NAME} non trouvé — relancez install.sh pour l'enregistrer."
 fi
 
+# ── Self-heal executable bit ──────────────────────────────────────
+# Ensure update.sh/install.sh stay executable even if a future git
+# operation (pull/reset/checkout) resets the mode bit.
+chmod +x "${APP_DIR}/update.sh" "${APP_DIR}/install.sh" 2>/dev/null || true
+
 echo ""
 success "Mise à jour terminée !"
