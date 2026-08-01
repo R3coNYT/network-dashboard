@@ -40,7 +40,7 @@ warn()    { echo -e "${YELLOW}[!]${NC} $*"; }
 [[ ! -d "$VENV_DIR" ]] && { warn "Virtualenv missing — run install.sh first."; exit 1; }
 
 # ── Git pull ─────────────────────────────────────────────────────
-if [[ -d "${SOURCE_DIR}/.git" ]]; then
+if [[ -d "${SOURCE_DIR}/.git" && -z "${NETDASH_REEXECED:-}" ]]; then
     # Avoid "detected dubious ownership" when the repo is owned by a
     # different user than the one running this script (e.g. sudo as root
     # on a directory owned by your regular user).
@@ -55,8 +55,13 @@ if [[ -d "${SOURCE_DIR}/.git" ]]; then
         git -C "${SOURCE_DIR}" pull
     fi
     success "Repository up to date"
+
+    # bash already has this script's OLD content loaded in memory, so
+    # anything below would silently keep running the pre-pull logic.
+    # Re-exec the freshly-pulled file to pick up whatever just changed.
+    exec env NETDASH_REEXECED=1 bash "${SOURCE_DIR}/update.sh" "$@"
 else
-    warn "No .git directory found in ${SOURCE_DIR} — skipping git pull."
+    [[ -z "${NETDASH_REEXECED:-}" ]] && warn "No .git directory found in ${SOURCE_DIR} — skipping git pull."
 fi
 
 # ── Sync source → /opt/network-dashboard ─────────────────────────
