@@ -15,6 +15,7 @@ SOURCE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 APP_DIR="/opt/network-dashboard"
 APP_NAME="netdashboard"
 VENV_DIR="${APP_DIR}/.venv"
+LOG_DIR="/var/log/${APP_NAME}"
 
 # Determine the service user. Reuse the one persisted at install time
 # (.service_user) so it stays consistent no matter how this script is
@@ -95,6 +96,36 @@ if systemctl is-enabled --quiet "${APP_NAME}.service" 2>/dev/null; then
 else
     warn "Service ${APP_NAME} not found — run install.sh to register it."
 fi
+
+# ── Self-heal log dir + cron jobs ─────────────────────────────────
+# The cron.d files embed SERVICE_USER at generation time. If it ever
+# changes (e.g. after a manual chown fix) they'd silently keep running
+# — and failing — as the old user. Regenerate them here so they always
+# match the current SERVICE_USER and log directory ownership.
+mkdir -p "$LOG_DIR"
+chown -R "${SERVICE_USER}:${SERVICE_USER}" "$LOG_DIR" 2>/dev/null || true
+
+RENEW_SCRIPT="/usr/local/bin/${APP_NAME}-renew-cert.sh"
+if [[ -f "$RENEW_SCRIPT" ]]; then
+    cat > "/etc/cron.d/${APP_NAME}-cert" <<CRON
+# NetDashboard — SSL renewal every 2 weeks
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+0 3 1,15 * * root ${RENEW_SCRIPT} >> ${LOG_DIR}/cert-renewal.log 2>&1
+CRON
+    chmod 644 "/etc/cron.d/${APP_NAME}-cert"
+fi
+
+if [[ -f "${APP_DIR}/check_public_ip.py" ]]; then
+    cat > "/etc/cron.d/${APP_NAME}-public-ip" <<CRON
+# NetDashboard — public IP check 2x/day (00:00 and 12:00)
+SHELL=/bin/bash
+PATH=/usr/local/sbin:/usr/local/bin:/sbin:/bin:/usr/sbin:/usr/bin
+0 0,12 * * * ${SERVICE_USER} ${VENV_DIR}/bin/python ${APP_DIR}/check_public_ip.py >> ${LOG_DIR}/public-ip.log 2>&1
+CRON
+    chmod 644 "/etc/cron.d/${APP_NAME}-public-ip"
+fi
+success "Cron jobs re-synced with service user '${SERVICE_USER}'"
 
 # ── Self-heal executable bit ──────────────────────────────────────
 # Ensure update.sh/install.sh stay executable even if a future git
